@@ -119,7 +119,7 @@ void can_msg_rcv(){
     uint8_t can_id = can_msg.can_id;
     uint8_t can_dlc = can_msg.can_dlc;
     switch(can_id){ //Segun el ID recibido se guarda en la EEPROM en la posicion de memoria que corresponde
-      case VUV_MSG_ID:
+      case VUV_MSG_ID:{
         EEPROM.write(VUV_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
         Serial.print("Recibido mensaje de config VUV. Direccion memoria:");
@@ -127,8 +127,8 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
-        break;
-      case VOV_MSG_ID:
+        break;}
+      case VOV_MSG_ID:{
         EEPROM.write(VOV_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
         Serial.print("Recibido mensaje de config VOV. Direccion memoria:");
@@ -136,8 +136,8 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
-        break;
-      case DCTO_MSG_ID:
+        break;}
+      case DCTO_MSG_ID:{
         EEPROM.write(DCTO_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
         Serial.print("Recibido mensaje de config DCTO. Direccion memoria:");
@@ -145,8 +145,8 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
-        break;
-      case NCELL_MSG_ID:
+        break;}
+      case NCELL_MSG_ID:{
         EEPROM.write(NCELL_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
         Serial.print("Recibido mensaje de config NCELL. Direccion memoria:");
@@ -154,8 +154,8 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
-        break;
-      case N_NTC_MSG_ID:
+        break;}
+      case N_NTC_MSG_ID:{
         EEPROM.write(N_NTC_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
         Serial.print("Recibido mensaje de config N_NTC. Direccion memoria:");
@@ -163,8 +163,8 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
-        break;
-      case TSLEEP_MSG_ID:
+        break;}
+      case TSLEEP_MSG_ID:{
         EEPROM.write(TSLEEP_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
         Serial.print("Recibido mensaje de config TSLEEP. Direccion memoria:");
@@ -172,43 +172,43 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
-        break;
-      case BAL1TO8_MSG_ID:
+        break;}
+      case BAL1TO8_MSG_ID:{
         #ifdef SERIAL_DEBUG
         Serial.print("Balanceo celdas 1 a 8 recibido. ");
         Serial.println(can_msg.data[0], BIN);
         #endif
         force_balancing (TOTAL_IC, tx_cfg, can_msg.data[0], true); //True indica que se balancee en el grupo 1 a 8
-        break;
-      case BAL9TO12_MSG_ID:
+        break;}
+      case BAL9TO12_MSG_ID:{
         #ifdef SERIAL_DEBUG
         Serial.print("Balanceo celdas 9 a 12 recibido. ");
         Serial.println(can_msg.data[0], BIN);
         #endif
         force_balancing (TOTAL_IC, tx_cfg, can_msg.data[0], false); //True indica que se balancee en el grupo 1 a 8
-        break;
-      case ASK_CONFIG_MSG_ID:
+        break;}
+      case ASK_CONFIG_MSG_ID:{ //Devuelve las configuraciones almacenadas en la EEPROM
         #ifdef SERIAL_DEBUG
         Serial.print("Parametros de configuracion pedidos. ");
         Serial.println(can_msg.data[0], BIN);
         #endif 
-        can_msg.can_id = SEND_CONFIG_MSG_ID;
+        can_msg.can_id = ANSWER_CONFIG_MSG_ID;
         can_msg.can_dlc = 8;
         can_msg.data[0] =   EEPROM.read(VUV_addr);
         can_msg.data[1] =   EEPROM.read(VOV_addr);
         can_msg.data[2] =   EEPROM.read(DCTO_addr);
         can_msg.data[3] =   EEPROM.read(NCELL_addr);
         can_msg.data[4] =   EEPROM.read(N_NTC_addr);
-        can_msg.data[5] =   EEPROM.read(TSLEEP_addr);
+        can_msg.data[5] =   EEPROM.read(MAX_DIFF_CELL_addr);
         wakeup_sleep();
-        int8_t error = LTC6804_rdcfg(TOTAL_IC,rx_cfg); //Se lee la configuracion del LTC
+        uint8_t error = LTC6804_rdcfg(TOTAL_IC,rx_cfg); //Se lee la configuracion del LTC
         if (error != -1){
           can_msg.data[6] =   rx_cfg[0][4]; //En bytes 6 y 7 se envian celdas actualmente en balanceo
           can_msg.data[7] =   rx_cfg[0][5] & 0b00001111; //Podria usarse una funcion para obtener config
         }
         mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN con las configuraciones
-        break;
-      case MAX_DIFF_CELL_MSG_ID:
+        break;}
+      case MAX_DIFF_CELL_MSG_ID:{
         EEPROM.write(MAX_DIFF_CELL_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         MAX_VCELL_DIFF = float( can_msg.data[0] * 0.001); //Se guarda el valor de maxima_diferencia de tension
         #ifdef SERIAL_DEBUG
@@ -217,6 +217,9 @@ void can_msg_rcv(){
         Serial.print("Valor a almacenar (BIN):");
         Serial.println(can_msg.data[0],BIN);
         #endif
+        break;}
+      default:
+        Serial.println("ningun caso");
         break;
     }
   }
@@ -250,6 +253,11 @@ void can_msg_rcv(){
   Inicialización
  ***********************************************************************/
 void setup(){
+  for (uint8_t i=0; i<TOTAL_IC; i++){ //Se inicializa el array de los V de las celdas
+    for(uint8_t j=0 ; j<12 ; j++){
+      cell_codes[i][j] = 65525;
+    }
+  }
   #ifdef SERIAL_DEBUG
     Serial.begin(115200);
     print_config(tx_cfg);
@@ -258,7 +266,7 @@ void setup(){
 
   
   LTC6804_initialize();  //Inicializa el LTC6804
-  init_cfg(tx_cfg);        //Inicializa el array de configuración del 6804 a los valores por defecto
+  init_cfg(tx_cfg);      //Inicializa el array de configuración del 6804 a los valores por defecto
   
   read_eeprom_ltc(TOTAL_IC, tx_cfg); //Actualiza el array de config del LTC6804 con los valores almacenados en la EEPROM
   read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF); //Se leen las configuraciones del ATMEGA desde EEPROM
@@ -293,7 +301,7 @@ void loop() {
   read_cell_voltage (TOTAL_IC, TOTAL_CELL, tx_cfg, cell_codes);
 
   //Se convierten los valores de la tensión de las celdas a mensaje CAN
-  cell_voltage_to_can_msg (cell_codes, TOTAL_IC, TOTAL_CELL, canBatMsg1);
+  cell_voltage_to_can_msg (cell_codes, TOTAL_IC, TOTAL_CELL, canBatMsg1, canBatMsg2, canBatMsg3);
 
   //Se envia el valor de las tensiones de celdas por CAN
   send_can_msg(canBatMsg1);
@@ -307,6 +315,7 @@ void loop() {
 
   //Activar balanceo de las celdas necesarias
   balancing(TOTAL_IC,  cell_codes, tx_cfg, MAX_VCELL_DIFF, TOTAL_CELL, OV_THR, UV_THR );
+
 
 
   //Calcular tensión total y generar aviso de tension o Temperatura
@@ -540,7 +549,6 @@ void cell_voltage_to_can_msg (const uint16_t cell_codes[][12], const uint8_t TOT
       //Este algoritmo permite rellenar un mensaje de 8 bytes que contenga los 4 valores de 16 bits de las celdas. Con MSB los valores de la celda más alta
       //y LSB los valores LSB de la celda más baja
       canBatMsg1.data[2 * j] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
-      Serial.println(cell_codes[i][j]);
       canBatMsg1.data[2 * j + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
     }
   }
@@ -549,8 +557,8 @@ void cell_voltage_to_can_msg (const uint16_t cell_codes[][12], const uint8_t TOT
     for (uint8_t j = 4 ; j < 8; j++) { //Cada medición ocupa 2 bytes (cell_codes son arrays de 16 bits)
       //Este algoritmo permite rellenar un mensaje de 8 bytes que contenga los 4 valores de 16 bits de las celdas. Con MSB los valores de la celda más alta
       //y LSB los valores LSB de la celda más baja
-      canBatMsg2.data[2 * (j - 4)] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
-      canBatMsg2.data[2 * (j - 4) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
+      canBatMsg2.data[2*(j - 4)] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
+      canBatMsg2.data[2*(j - 4) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
     }
   }
 }
@@ -563,7 +571,7 @@ void cell_voltage_to_can_msg (const uint16_t cell_codes[][12], const uint8_t TOT
       //Este algoritmo permite rellenar un mensaje de 8 bytes que contenga los 4 valores de 16 bits de las celdas. Con MSB los valores de la celda más alta
       //y LSB los valores LSB de la celda más baja
       canBatMsg1.data[2 * j] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
-      canBatMsg1.data[2 * j + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
+      canBatMsg1.data[(2 * j) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
     }
   }
   for (uint8_t i = 0; i < TOTAL_IC; i++) {
@@ -571,8 +579,8 @@ void cell_voltage_to_can_msg (const uint16_t cell_codes[][12], const uint8_t TOT
     for (uint8_t j = 4 ; j < 8; j++) { //Cada medición ocupa 2 bytes (cell_codes son arrays de 16 bits)
       //Este algoritmo permite rellenar un mensaje de 8 bytes que contenga los 4 valores de 16 bits de las celdas. Con MSB los valores de la celda más alta
       //y LSB los valores LSB de la celda más baja
-      canBatMsg2.data[2 * (j - 4)] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
-      canBatMsg2.data[2 * (j - 4) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
+      canBatMsg2.data[2*(j - 4)] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
+      canBatMsg2.data[2*(j - 4) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje  
     }
   }
   for (uint8_t i = 0; i < TOTAL_IC; i++) {
@@ -580,8 +588,8 @@ void cell_voltage_to_can_msg (const uint16_t cell_codes[][12], const uint8_t TOT
     for (uint8_t j = 8 ; j < 12; j++) { //Cada medición ocupa 2 bytes (cell_codes son arrays de 16 bits)
       //Este algoritmo permite rellenar un mensaje de 8 bytes que contenga los 4 valores de 16 bits de las celdas. Con MSB los valores de la celda más alta
       //y LSB los valores LSB de la celda más baja
-      canBatMsg2.data[2 * (j - 8)] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
-      canBatMsg2.data[2 * (j - 8) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
+      canBatMsg3.data[2 * (j - 8)] = cell_codes[i][j]; //Se toma la parte baja del registro de 16 bits
+      canBatMsg3.data[2 * (j - 8) + 1] = cell_codes[i][j] >> 8; //Se toma la parte alta del registro de 16 bits y se guarda en el byte siguiente del mnsje
     }
   }
 }
@@ -791,7 +799,7 @@ void SOx_can_msg() { //
   Envia el mensaje CAN deseado
  **************************************/
 void send_can_msg(const struct can_frame &can_msg) { //
-#ifdef SERIAL_DEBUG
+  #ifdef SERIAL_DEBUG
   Serial.println("Mensaje CAN enviado:");
   Serial.print(can_msg.can_id, HEX); // print ID
   Serial.print(" ");
@@ -802,7 +810,7 @@ void send_can_msg(const struct can_frame &can_msg) { //
     Serial.print(" ");
   }
   Serial.println();
-#endif
+  #endif
   mcp2515.sendMessage(&can_msg);
   delay(50);
 }
