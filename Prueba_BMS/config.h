@@ -39,6 +39,10 @@
 
 
 #define PIN_SYNC_MUX 8 //Pin del CS del ADG731  (D8 que es el PB0 en ATMega 328P)
+#define PIN_CURRENT_SENSOR A1 //Pin al que se conecta el sensor de corriente
+#define PIN_ANALOG_NTC A0 //Pin para la lectura de las Temperaturas
+#define SENSIBILITY_CURRENT 0.066 //Sensibilidad del sensor de corriente ACS712 30A
+#define SAMPLESNUMBER 100 //Numero de muestras tomadas para hacer la media de la corriente
 
 //#define SERIAL_DEBUG
 

@@ -19,8 +19,6 @@
 #include "EEPROM.h"
 #include <LowPower.h>
 
-//const uint8_t PIN_ANALOG_NTC = 0; //Pin de entrada analogica de las sondas NTC
-
 MCP2515 mcp2515(10); //Se declara el objeto de la clase MCP2515
 
 //Struct para almacenar mensaje CAN recibido de configuracion
@@ -36,6 +34,9 @@ struct can_frame canTempMsg1;
 struct can_frame canTempMsg2;
 struct can_frame canTempMsg3;
 struct can_frame canTempMsg4;
+
+//Struct para almacenar el mensaje CAN de la corriente
+struct can_frame canCurrentMsg; 
 
 struct can_frame warning; //Mensaje CAN de warning de baja tensión batería, batería en sobretensión o anomalía en Tª
 
@@ -122,74 +123,62 @@ void can_msg_rcv(){
       case VUV_MSG_ID:{
         EEPROM.write(VUV_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de config VUV. Direccion memoria:");
-        Serial.println(VUV_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("VUV:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       case VOV_MSG_ID:{
         EEPROM.write(VOV_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de config VOV. Direccion memoria:");
-        Serial.println(VOV_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("VOV:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       case DCTO_MSG_ID:{
         EEPROM.write(DCTO_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de config DCTO. Direccion memoria:");
-        Serial.println(DCTO_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("DCTO:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       case NCELL_MSG_ID:{
         EEPROM.write(NCELL_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de config NCELL. Direccion memoria:");
-        Serial.println(NCELL_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("NCELL:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       case N_NTC_MSG_ID:{
         EEPROM.write(N_NTC_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de config N_NTC. Direccion memoria:");
-        Serial.println(N_NTC_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("N_NTC:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       case TSLEEP_MSG_ID:{
         EEPROM.write(TSLEEP_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de config TSLEEP. Direccion memoria:");
-        Serial.println(TSLEEP_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("TSLEEP:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       case BAL1TO8_MSG_ID:{
         #ifdef SERIAL_DEBUG
-        Serial.print("Balanceo celdas 1 a 8 recibido. ");
+        Serial.print("Balanceo celdas 1 a 8:");
         Serial.println(can_msg.data[0], BIN);
         #endif
         force_balancing (TOTAL_IC, tx_cfg, can_msg.data[0], true); //True indica que se balancee en el grupo 1 a 8
         break;}
       case BAL9TO12_MSG_ID:{
         #ifdef SERIAL_DEBUG
-        Serial.print("Balanceo celdas 9 a 12 recibido. ");
+        Serial.print("Balanceo celdas 9 a 12: ");
         Serial.println(can_msg.data[0], BIN);
         #endif
         force_balancing (TOTAL_IC, tx_cfg, can_msg.data[0], false); //True indica que se balancee en el grupo 1 a 8
         break;}
       case ASK_CONFIG_MSG_ID:{ //Devuelve las configuraciones almacenadas en la EEPROM
         #ifdef SERIAL_DEBUG
-        Serial.print("Parametros de configuracion pedidos. ");
+        Serial.print("Parametros de config pedidos.");
         Serial.println(can_msg.data[0], BIN);
         #endif 
         can_msg.can_id = ANSWER_CONFIG_MSG_ID;
@@ -212,38 +201,21 @@ void can_msg_rcv(){
         EEPROM.write(MAX_DIFF_CELL_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
         MAX_VCELL_DIFF = float( can_msg.data[0] * 0.001); //Se guarda el valor de maxima_diferencia de tension
         #ifdef SERIAL_DEBUG
-        Serial.print("Recibido mensaje de máxima diferencia de V entre celdas. Direccion memoria:");
-        Serial.println(MAX_DIFF_CELL_addr);
-        Serial.print("Valor a almacenar (BIN):");
+        Serial.print("Máx. diferencia mV entre celdas:");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
       default:
-        Serial.println("ningun caso");
         break;
     }
   }
   read_eeprom_ltc (TOTAL_IC, tx_cfg); //Se actualiza el array de config del LTC leyendo los parametros de la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF);
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF); //Se actualizan los valores de config del ATMega
   LTC6804_wrcfg(TOTAL_IC, tx_cfg); //Se actualiza la configuracion del LTC
   
   #ifdef SERIAL_DEBUG
-    Serial.print("UnderV Umbral:");
-    Serial.println(UV_THR);
-    Serial.print("OverV Umbral:");
-    Serial.println(OV_THR);
-    Serial.print("N. NTC:");
-    Serial.println(N_NTC);
-    Serial.print("Total_CELL:");
-    Serial.println(TOTAL_CELL);
-    Serial.print("UnderV Umbral Bateria:");
-    Serial.println(UVBAT_THR);
-    Serial.print("OverV Umbral Bateria:");
-    Serial.println(OVBAT_THR);
-    Serial.println();
+    Serial.println("Configuracion del LTC:");
     print_config(tx_cfg);
-    Serial.println("----------------------------------------------------------");
-    Serial.println();
   #endif
   interrupts();
 }
@@ -288,6 +260,7 @@ void setup(){
   config_can_msg (canTempMsg3, TEMP_MSG3_ID, 8);
   config_can_msg (canTempMsg4, TEMP_MSG4_ID, 8);
   config_can_msg (warning, WARNING_ID, 1);
+  config_can_msg (canCurrentMsg, CURRENT_MSG_ID, 4);
 }
 
 /**********************************************************************
@@ -313,25 +286,20 @@ void loop() {
     send_can_msg (canBatMsg3);
   }
 
-  //Activar balanceo de las celdas necesarias
+  //Verificar y activar el balanceo de las celdas necesarias
   balancing(TOTAL_IC,  cell_codes, tx_cfg, MAX_VCELL_DIFF, TOTAL_CELL, OV_THR, UV_THR );
-
-
-
+  
   //Calcular tensión total y generar aviso de tension o Temperatura
   float voltaje_total = calc_volt_total(cell_codes, TOTAL_IC, TOTAL_CELL);
-  #ifdef SERIAL_DEBUG
-    Serial.print("Voltaje total es (V):");
-    Serial.println(voltaje_total);
-  #endif
+  
   bool genera_warning = warning_msg(voltaje_total, UVBAT_THR, OVBAT_THR, T_max, warning);
   if (genera_warning) {
-    //Se envia el aviso 3 veces
+    //Se envia el aviso
     send_can_msg(warning);
   }
 
   //Se miden todas las temperaturas de las celdas y se guardan en cell_temp. Además se obtiene la T_max
-  T_max = measure_all_temp(cell_temp, N_NTC, BETTA, To, Ro, Vcc, A0);
+  T_max = measure_all_temp(cell_temp, N_NTC, BETTA, To, Ro, Vcc, PIN_ANALOG_NTC);
 
   //Se conviertes las temperaturas a mensajes CAN
   temp_to_can_msg(cell_temp, N_NTC, canTempMsg1, canTempMsg2, canTempMsg3, canTempMsg4);
@@ -348,7 +316,12 @@ void loop() {
     send_can_msg(canTempMsg4);  
   }
 
+  //Se mide la corriente y se envía el valor por CAN
+  int current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT);
+  current_to_can_msg (current, canCurrentMsg);
+  send_can_msg(canCurrentMsg);
 
+  
   //Estimar SOH y SOC y enviarlos por CAN
 
 } //FIN DEL LOOP
@@ -357,6 +330,18 @@ void loop() {
 
 
 
+/***********************************
+ * Función para medir la corriente  en mA
+ ************************************/
+ int get_current (const int samples_number, const float sensibility_current){
+  float current_sum = 0;
+  for (int i=0; i<samples_number; i++){
+    float voltage = analogRead(PIN_CURRENT_SENSOR) * 5.0 /1023.0;
+    current_sum += (voltage -2.5)/sensibility_current; //V = 2.5 + K*I
+  }
+  int current = round((current_sum/samples_number)*1000);
+  return(current); 
+}
 
 
 /************************************
@@ -366,7 +351,9 @@ void loop() {
   float V_min=cell_codes[0][0];
   float V_max = cell_codes[0][0];
   static uint16_t cell_to_balance = 0b0000000000000000;
-  for (int i=0; i< TOTAL_IC; i++){//Se obtiene V_min y V_max
+  
+  //Se obtiene V_min y V_max
+  for (int i=0; i< TOTAL_IC; i++){
     for(int j=0; j<TOTAL_CELL; j++){ 
       if(V_min < float(cell_codes[i][j]* 0.0001)){//Según datasheet el valor medido se multiplica por 100uV
         V_min = float(cell_codes[i][j]* 0.0001);
@@ -386,7 +373,7 @@ void loop() {
         cell_to_balance = (cell_to_balance | (0b1 << j));
        }
        else{
-        if ((cell_volt < (VOV_THR - 2*max_difference)) || (cell_volt < VUV_THR) || (cell_volt- V_min < max_difference)){ 
+        if ((cell_volt < (VOV_THR - 2*max_difference)) || (cell_volt < VUV_THR) || ((cell_volt- V_min) < max_difference)){ 
           //Si la celda ha bajado del umbral de sobrevoltaje o está por debajo de la tensión mínima o dentro del rango de máxima diferencia, se para el balanceo
           cell_to_balance = (cell_to_balance & ~(uint16_t(0b1 << j))); //Pongo a 0 el bit de la celda que no se debe balancear
         }
@@ -409,7 +396,7 @@ void loop() {
 /************************************
  * Forzar balanceo de las celdas indicadas
  ***********************************/
- void force_balancing (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6], uint8_t cells_to_balance, bool group){ //Si group= true.Configura grupo celdas 1 a 8
+ void force_balancing (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6], uint8_t cells_to_balance, bool group){ //Si group= true. Se balancea grupo celdas 1 a 8
   //Si group = false. Balancea grupo de celdas 9 a 12
   if( group){
     for (uint8_t i=0 ; i< TOTAL_IC; i++){
@@ -471,15 +458,12 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
 void start_cell_voltage_ADC(const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]) {
 #ifdef SERIAL_DEBUG
   print_config(tx_cfg);
-  Serial.println("Comenzando conversión ADC de Voltajes");
+  Serial.println("Iniciando conv. ADC de Vcell");
 #endif
   wakeup_sleep(); //Despierta el IC del modo sleep
   LTC6804_wrcfg(TOTAL_IC, tx_cfg); //configura el IC
   LTC6804_adcv(); //comienza la conversión ADC de las entradas de voltaje (Cx) del IC
   delay(3);
-#ifdef SERIAL_DEBUG
-  Serial.println("Conversión ADC de las celdas completada");
-#endif
 }
 
 /************************************
@@ -497,7 +481,7 @@ void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_
   error = LTC6804_rdcv(0, TOTAL_IC, cell_codes); // Se lee y hace un parses de las tensiones de las celdas
   if (error == -1) { //Si el error vale -1 es que hubo un error con el checkeo del CRC
 #ifdef SERIAL_DEBUG
-    Serial.println("Ocurrió un error con el CRC en la lectura de los Voltajes de celdas");
+    Serial.println("Error en CRC Vcell");
 #endif
     for (int i = 0; i < TOTAL_IC; i++) { //Si los valores recibidos no son correctos, se recuperan los valores de la lectura anterior
       for (int j = 0; j < TOTAL_CELL; j++) {
@@ -520,6 +504,18 @@ void config_can_msg (struct can_frame &can_msg, const uint8_t can_id, const uint
   can_msg.can_dlc = can_dlc;
 }
 
+
+/************************************
+ * Función que codifica la corriente en un mensaje CAN. Se dividen los 32 bits del float en 4 bytes del mensaje CAN
+ ****************************************/
+void current_to_can_msg ( int current, struct can_frame &canCurrentMsg){
+  canCurrentMsg.data[0] = (current) ; //Los 8 bits menos significados son el primer byte
+  canCurrentMsg.data[1] = (current >> 8) ; //Los siguientes 8 bits del numero de 32 bits son el byte1
+  canCurrentMsg.data[2] = (current >> 16);
+  canCurrentMsg.data[3] = (current >> 24);
+}
+
+ 
 /************************************
   Se codifican las tensiones en mensajes CAN. Función
   Sigue este formato
@@ -607,13 +603,13 @@ void cell_voltage_to_can_msg (const uint16_t cell_codes[][12], const uint8_t TOT
 */
 void select_channel_MUX(const uint8_t channel) {
 #ifdef SERIAL_DEBUG
-  Serial.print("El canal seleccionado es: ");
+  Serial.print("Canal selecc.: ");
   Serial.println(channel);
 #endif
   if (channel <= 32) {
     uint8_t msg = (0b11000000 | channel); //Se genera el mensaje con el valor de 1 en Enable y CSA y se concatena el canal a elegir
 #ifdef SERIAL_DEBUG
-    Serial.print("El mensaje a enviar por SPI es: ");
+    Serial.print("Mensaje SPI es: ");
     Serial.println(msg, BIN); //Se imprime el mensaje a enviar por SPI en binario
 #endif
     SPI.beginTransaction(SPISettings(16000000, MSBFIRST, SPI_MODE1)); //HAY QUE REVISAR EL MODO DEL SPI PROBÁNDOLO
@@ -634,7 +630,6 @@ float measure_temp(const int BETTA, const int To, const int Ro, const int Vcc, c
   //t_medida = 28.3; //ESTA LINEA ESTA PARA PRUEBA **********************************************************************************************************************************************************************************
   #ifdef SERIAL_DEBUG
     Serial.println("Channel  | Tmedida ºC");
-    Serial.print("  ");
     Serial.print(channel);
     Serial.print("  | ");
     Serial.println(t_medida);
@@ -663,13 +658,13 @@ float measure_all_temp(float array_temp[], const uint8_t N_NTC, const int BETTA,
   Se calcula la tensión total de la batería
  **************************************/
 float calc_volt_total(const uint16_t cell_codes[][12], const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL) {
-  float voltaje_total = 0;
+  float voltage_total = 0;
   for (uint8_t i = 0; i < TOTAL_IC ; i++) {
     for (uint8_t j = 0 ; j < TOTAL_CELL; j++) {
-      voltaje_total += (cell_codes[i][j] * 0.0001); //Se pasa la tensión a decimal y se suman
+      voltage_total += (cell_codes[i][j] * 0.0001); //Se pasa la tensión a decimal y se suman
     }
   }
-  return voltaje_total;
+  return voltage_total;
 }
 
 
@@ -689,7 +684,7 @@ bool warning_msg(const float voltaje_total, const float umbral_vacio, const floa
     estado_ant_V = estado_V;
     estado_V = 0;
 #ifdef SERIAL_DEBUG
-    Serial.println("Voltaje del pack demasiado bajo");
+    Serial.println("Vpack muy bajo");
 #endif
   }
   //Caso voltaje entre mínimo y máximo
@@ -699,7 +694,7 @@ bool warning_msg(const float voltaje_total, const float umbral_vacio, const floa
     estado_ant_V = estado_V;
     estado_V = 1;
 #ifdef SERIAL_DEBUG
-    Serial.println("Voltaje del pack adecuado");
+    Serial.println("Vpack OK");
 #endif
   }
   //Caso de batería llena
@@ -709,7 +704,7 @@ bool warning_msg(const float voltaje_total, const float umbral_vacio, const floa
     estado_ant_V = estado_V;
     estado_V = 2;
 #ifdef SERIAL_DEBUG
-    Serial.println("Voltaje del pack superior al valor máximo");
+    Serial.println("Vpack superior al máximo");
 #endif
   }
 
@@ -719,7 +714,7 @@ bool warning_msg(const float voltaje_total, const float umbral_vacio, const floa
     estado_ant_T = estado_T;
     estado_T = 3;
 #ifdef SERIAL_DEBUG
-    Serial.println("Temperatura máxima excedida");
+    Serial.println("Temp. máx. excedida");
 #endif
   }
   else if (T_max < 50) { //Hasta no bajar a 50ºC no se quita aviso de sobretemperatura
@@ -727,19 +722,19 @@ bool warning_msg(const float voltaje_total, const float umbral_vacio, const floa
     estado_ant_T = estado_T;
     estado_T = 4;
 #ifdef SERIAL_DEBUG
-    Serial.println("Temperatura en rango adecuado");
+    Serial.println("Temp. adecuada");
 #endif
   }
 
 
   if ((estado_ant_V != estado_V) || (estado_ant_T != estado_T)) { //Si hay algún cambio de estado
 #ifdef SERIAL_DEBUG
-    Serial.println("Hay un cambio de estado en las advertencias. Activando Warning");
-    Serial.println("Estado anterior(V) | Estado actual(V) (actualizado)");
+    Serial.println("Cambios en las advertencias. Activando Warning");
+    Serial.println("Estado anterior(V) | Estado actual(V)");
     Serial.print(estado_ant_V);
-    Serial.print("        |   ");
+    Serial.print("     |   ");
     Serial.println(estado_V);
-    Serial.println("Estado anterior(T) | Estado actual(T) (actualizado)");
+    Serial.println("Estado anterior(T) | Estado actual(T)");
     Serial.print(estado_ant_T);
     Serial.print("        |   ");
     Serial.println(estado_T);
@@ -747,7 +742,7 @@ bool warning_msg(const float voltaje_total, const float umbral_vacio, const floa
     return true; //Devuelve true si hay un cambio de estado para así enviar un nuevo mensaje warning
   }
 #ifdef SERIAL_DEBUG
-  Serial.println("No hay cambio de estado en las advertencias. No warning");
+  Serial.println("No hay cambio en advertencias. No warning");
 #endif
   return false; //Devuelve false si no hay cambio para así no enviar un nuevo warning
 }
@@ -800,16 +795,16 @@ void SOx_can_msg() { //
  **************************************/
 void send_can_msg(const struct can_frame &can_msg) { //
   #ifdef SERIAL_DEBUG
-  Serial.println("Mensaje CAN enviado:");
-  Serial.print(can_msg.can_id, HEX); // print ID
-  Serial.print(" ");
-  Serial.print(can_msg.can_dlc, HEX); // print DLC
-  Serial.print(" ");
-  for (int i = 0; i < can_msg.can_dlc; i++)  { // print the data
-    Serial.print(can_msg.data[i], HEX);
-    Serial.print(" ");
-  }
-  Serial.println();
+  //Serial.println("Mensaje CAN enviado:");
+  //Serial.print(can_msg.can_id, HEX); // print ID
+  //Serial.print(" ");
+  //Serial.print(can_msg.can_dlc, HEX); // print DLC
+  //Serial.print(" ");
+  //for (int i = 0; i < can_msg.can_dlc; i++)  { // print the data
+  //  Serial.print(can_msg.data[i], HEX);
+  //  Serial.print(" ");
+  //}
+  //Serial.println();
   #endif
   mcp2515.sendMessage(&can_msg);
   delay(50);
@@ -828,21 +823,12 @@ void init_mcp2515(const CAN_SPEED canSpeed, CAN_CLOCK canClock, int mode) {
   mcp2515.setBitrate(canSpeed, canClock);
   if (mode == 0) {
     mcp2515.setNormalMode();
-#ifdef SERIAL_DEBUG
-    Serial.println ("Inicializando MCP modo Normal");
-#endif
   }
   else if (mode == 1) {
     mcp2515.setLoopbackMode();
-#ifdef SERIAL_DEBUG
-    Serial.println ("Inicializando MCP modo Loopback");
-#endif
   }
   else {
     mcp2515.setListenOnlyMode();
-#ifdef SERIAL_DEBUG
-    Serial.println ("Inicializando MCP modo Listen Only");
-#endif
   }
 }
 
@@ -867,15 +853,15 @@ void init_cfg(uint8_t tx_cfg[][6]) {
  *************************************************************/
 void print_cells(const uint8_t TOTAL_IC, uint16_t cell_codes[][12]) {
   //void print_cells(const uint8_t TOTAL_IC, uint16_t *cell_codes){
-  Serial.println("Lectura de V de celdas correcta");
+  Serial.println("Voltaje de las Celdas");
   for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++) {
     Serial.print(" IC ");
     Serial.print(current_ic + 1, DEC);
-    for (int i = 0; i < 12; i++) {
+    for (int cell = 0; cell < 12; cell++) {
       Serial.print(" C");
-      Serial.print(i + 1, DEC);
+      Serial.print(cell + 1, DEC);
       Serial.print(":");
-      Serial.print(cell_codes[current_ic][i] * 0.0001, 4);
+      Serial.print(cell_codes[current_ic][cell] * 0.0001, 4);
       Serial.print(",");
     }
     Serial.println();
@@ -930,7 +916,7 @@ void print_config(uint8_t tx_cfg[][6]) {
     serial_print_hex(tx_cfg[current_ic][4]);
     Serial.print(", 0x");
     serial_print_hex(tx_cfg[current_ic][5]);
-    Serial.print(", CRC Calculado : 0x");
+    Serial.print(", CRC : 0x");
     cfg_pec = pec15_calc(6, &tx_cfg[current_ic][0]);
     serial_print_hex((uint8_t)(cfg_pec >> 8));
     Serial.print(", 0x");
