@@ -87,6 +87,18 @@ A continuación se indican los mensajes CAN que son intercambiados entre el nodo
   - Valor = Bits a 1 son las celdas a balancear con *LSB=C8* y *bit3=C11*
   - ID = 0x09  DLC = 1 data[0] = 0b00001001 -> Balancear celdas 9 (C8) y 12 (C11)
 
+### Configurar el tipo de Balanceo a realizar. Mensaje CAN
+- Este mensaje configura si el balanceo de las celdas se realiza durante la carga, la descarga, en ambas o ninguna.
+Se envía un mnesaje CAN de 1 byte con los siguientes datos:
+  - El ID en hexadecimal es ID = 0x0E (TYPE_BALANCING_MSG_ID)
+  - DLC = 1 byte
+  - Valor = Bit 0 representa el balanceo en la carga. Bit 1 representa el balanceo en la descarga
+    - ID = 0x0E DLC = 1 data[0] = 0b00000001 -> Balancear solo en la carga
+    - ID = 0x0E DLC = 1 data[0] = 0b00000010 -> Balancear solo en la descarga
+    - ID = 0x0E DLC = 1 data[0] = 0b00000011 -> Balancear en carga y descarga
+    - ID = 0x0E DLC = 1 data[0] = 0b00000000 -> No balancear en ningún caso
+  - Se almacena el valor en la dirección de memoria 0x09 (BALANCING_TYPE_addr)
+
 ### Configurar máxima diferencia entre celdas en mV. Mensaje CAN
 - Este mensaje CAN configura la máxima diferencia de tensión en mV admisible entre las diferentes celdas.
   - El ID en hexadecimal es ID=0x0D (MAX_DIFF_CELL_MSG_ID)
@@ -95,7 +107,8 @@ A continuación se indican los mensajes CAN que son intercambiados entre el nodo
   - Se almacena el valor en la dirección de memoria 0x08 de la EEPROM (MAX_DIFF_CELL_addr)
 
 ### Pedir las configuraciones de los BMS. Mensaje CAN
-- Este mensaje CAN pide todas las configuraciones almacenadas en la EEPROM del BMS. El ID de este mensaje es ID = 0x0B. El BMS responde con un mensaje con ID = 0x0C y 8 bytes con los datos.
+- Este mensaje CAN pide todas las configuraciones almacenadas en la EEPROM del BMS. El ID de este mensaje es ID = 0x0B.
+El BMS responde con un mensaje con ID = 0x0C y 8 bytes con los datos que ha obtenido de las direcciones de la EEPROM 0x00 a 0x07.
   - El ID en hexadecimal es ID=0x0B (ASK_CONFIG_MSG_ID)
   - DLC = 1 byte
   - Valor = 255
@@ -115,31 +128,31 @@ A continuación se indican los mensajes CAN que son intercambiados entre el nodo
     - data[7] = CELL_BALANCING_C8_C11
 
 ### Enviar los valores en Voltios de las celdas 1 a la 4. Mensaje CAN
-- Este mensaje envía el voltaje de las celdas C0-C3 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
+- Este mensaje envía el voltaje de las celdas C1-C4 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
   - ID=0x40 (DEC=64) (BAT_MSG1_ID)
   - DLC = 8 bytes
-  - Valor C0 = (data[0] | (data[1]<<8)) · 100 uV
-  - Valor C1 = (data[2] | (data[3]<<8)) · 100 uV   
-  - Valor C0 = (data[4] | (data[5]<<8)) · 100 uV
-  - Valor C0 = (data[6] | (data[7]<<8)) · 100 uV
+  - Valor C1 = (data[0] | (data[1]<<8)) · 100 uV
+  - Valor C2 = (data[2] | (data[3]<<8)) · 100 uV   
+  - Valor C3 = (data[4] | (data[5]<<8)) · 100 uV
+  - Valor C4 = (data[6] | (data[7]<<8)) · 100 uV
 
 ### Enviar los valores en Voltios de las celdas 5 a la 8. Mensaje CAN
-- Este mensaje envía el voltaje de las celdas C4-C7 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
+- Este mensaje envía el voltaje de las celdas C5-C8 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
     - ID=0x41 (DEC=65) (BAT_MSG2_ID)
     - DLC = 8 bytes
-    - Valor C4 = (data[0] | (data[1]<<8)) · 100 uV
-    - Valor C5 = (data[2] | (data[3]<<8)) · 100 uV   
-    - Valor C6 = (data[4] | (data[5]<<8)) · 100 uV
-    - Valor C7 = (data[6] | (data[7]<<8)) · 100 uV
+    - Valor C5 = (data[0] | (data[1]<<8)) · 100 uV
+    - Valor C6 = (data[2] | (data[3]<<8)) · 100 uV   
+    - Valor C7 = (data[4] | (data[5]<<8)) · 100 uV
+    - Valor C8 = (data[6] | (data[7]<<8)) · 100 uV
 
 ### Enviar los valores en Voltios de las celdas 9 a la 12. Mensaje CAN
-- Este mensaje envía el voltaje de las celdas C8-C11 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
+- Este mensaje envía el voltaje de las celdas C9-C12 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
     - ID=0x42 (DEC=66) (BAT_MSG3_ID)
     - DLC = 8 bytes
-    - Valor C8 = (data[0] | (data[1]<<8)) · 100 uV
-    - Valor C9 = (data[2] | (data[3]<<8)) · 100 uV   
-    - Valor C10 = (data[4] | (data[5]<<8)) · 100 uV
-    - Valor C11 = (data[6] | (data[7]<<8)) · 100 uV
+    - Valor C9 = (data[0] | (data[1]<<8)) · 100 uV
+    - Valor C10 = (data[2] | (data[3]<<8)) · 100 uV   
+    - Valor C11 = (data[4] | (data[5]<<8)) · 100 uV
+    - Valor C12 = (data[6] | (data[7]<<8)) · 100 uV
 
 ### Enviar la Temperatura de las NTC 1 a la 8. Mensaje CAN
 - Este mensaje envía cada temperatura en 1 byte de datos.
@@ -166,16 +179,22 @@ A continuación se indican los mensajes CAN que son intercambiados entre el nodo
   - NTC16 a NTC31 = data[0] a data[7]. Debe restarse a cada entero 5 y multiplicar por 0,3
 
 ### Enviar el valor del SOC. Mensaje CAN
-- Este mensaje envía el SOC del pack como un valor entre 0-255 (1 byte) correspondiente a 0-100%.
+- Este mensaje envía el SOC del pack como un valor entre 0-10000 (2 byte) correspondiente a 0-100% multiplicado por 100.
   - ID = 0x47 (DEC=71) (SOC_MSG_ID)
-  - DLC = 1 byte
-  - Valor = data[0] * 100/255
+  - DLC = 2 byte
+  - Mensaje CAN:
+    - data[0] = round(SOC * 100) >> 8
+    - data[1] = round(SOC *100) & 0b0000000011111111
+  - Valor = (uint16_t(data[1] << 8) | data[0])/100.0
 
 ### Enviar el valor del SOH. Mensaje CAN
-- Este mensaje envía el SOH del pack como un valor entre 0-255 (1 byte) correspondiente a 0-100%.
+- Este mensaje envía el SOC del pack como un valor entre 0-10000 (2 byte) correspondiente a 0-100% multiplicado por 100.
   - ID = 0x48 (DEC=72) (SOH_MSG_ID)
-  - DLC = 1 byte
-  - Valor = data[0] * 100/255
+  - DLC = 2 byte
+  - Mensaje CAN:
+    - data[0] = round(SOH * 100) >> 8
+    - data[1] = round(SOH *100) & 0b0000000011111111
+  - Valor = (uint16_t(data[1] << 8) | data[0])/100.0
 
 ### Enviar la corriente que circula por la batería. Mensaje CAN
 - Este mensaje envía la corriente medida por el BMS (siendo positiva para la carga de la batería) y negativa para la descarga. Se envía el valor como un entero de 4 bytes
