@@ -133,7 +133,7 @@ void setup(){
 
 
   LTC6804_initialize();  //Inicializa el LTC6804
-  init_cfg(tx_cfg);      //Inicializa el array de configuración del 6804 a los valores por defecto
+  init_cfg(tx_cfg, TOTAL_IC);      //Inicializa el array de configuración del 6804 a los valores por defecto
 
   read_eeprom_ltc(TOTAL_IC, tx_cfg); //Actualiza el array de config del LTC6804 con los valores almacenados en la EEPROM
   read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE); //Se leen las configuraciones del ATMEGA desde EEPROM

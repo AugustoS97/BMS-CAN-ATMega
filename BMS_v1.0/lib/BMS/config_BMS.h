@@ -13,6 +13,5 @@
 #define MAX_DIFF_CELL_addr 8
 #define BALANCING_TYPE_addr 9
 
-const uint8_t TOTAL_IC=1;
 
 #endif

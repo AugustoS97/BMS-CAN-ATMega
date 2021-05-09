@@ -14,5 +14,6 @@ const int Vcc = 5; //Vcc es de 5V para sensor de NTC
 const float internal_resistor = 0.066; //66 mOhm
 
 const uint8_t PIN_SYNC_MUX= 8; //Pin del CS del ADG731  (D8 que es el PB0 en ATMega 328P)
+const uint8_t TOTAL_IC = 1; //Numero de IC a emplear
 
 #endif

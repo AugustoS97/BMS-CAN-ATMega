@@ -141,7 +141,7 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
  **************************************/
 void start_cell_voltage_ADC(const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]) {
   #ifdef SERIAL_DEBUG
-  print_config(tx_cfg);
+  print_config(tx_cfg, TOTAL_IC);
   Serial.println("Iniciando conv. ADC de Vcell");
   #endif
   LTC6804_initialize();
@@ -229,7 +229,7 @@ void calculate_SOH() { //
 /************************************
   Se inicializa el paquete de datos a los valores de configuración
  **************************************/
-void init_cfg(uint8_t tx_cfg[][6]) {
+void init_cfg(uint8_t tx_cfg[][6], const uint8_t TOTAL_IC) {
   for (int i = 0; i < TOTAL_IC; i++) {
     tx_cfg[i][0] = 0xFE;
     tx_cfg[i][1] = 0x00 ;
@@ -266,7 +266,7 @@ void print_cells(const uint8_t TOTAL_IC, uint16_t cell_codes[][12]) {
 /*****************************************************************************
   Imprime por puerto Serial los Voltajes de los GPIO leidos y el valor de Vref2
  *****************************************************************************/
-void print_aux(uint16_t aux_codes[][6]) {
+void print_aux(uint16_t aux_codes[][6], const uint8_t TOTAL_IC) {
   //void print_aux(uint16_t *aux_codes){
 
   for (int current_ic = 0 ; current_ic < TOTAL_IC; current_ic++) {
@@ -292,7 +292,7 @@ void print_aux(uint16_t aux_codes[][6]) {
 /*******************************************************************************
   Imprime por Puerto Serial la Configuración que va a escribirse en el LTC6804
  ********************************************************************************/
-void print_config(uint8_t tx_cfg[][6]) {
+void print_config(uint8_t tx_cfg[][6], const uint8_t TOTAL_IC) {
   int cfg_pec;
 
   Serial.println("Configuración: ");
@@ -325,7 +325,7 @@ void print_config(uint8_t tx_cfg[][6]) {
 /******************************************************************
   Imprime por Puerto Serial la configuración que se ha leido del LTC6804
  *******************************************************************/
-void print_rxconfig(uint8_t rx_cfg[][8]) {
+void print_rxconfig(uint8_t rx_cfg[][8], const uint8_t TOTAL_IC) {
   Serial.println("Configuración recibida: ");
   for (int current_ic = 0; current_ic < TOTAL_IC; current_ic++) {
     Serial.print(" IC ");

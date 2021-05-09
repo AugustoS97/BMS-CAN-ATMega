@@ -13,17 +13,17 @@
 
 void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_t tx_cfg[][6], uint16_t cell_codes[][12]);
 
-void init_cfg(uint8_t tx_cfg[][6]);
+void init_cfg(uint8_t tx_cfg[][6], const uint8_t TOTAL_IC);
 
 void LTC6804_initialize();
 
-void print_config(uint8_t tx_cfg[][6]);
+void print_config(uint8_t tx_cfg[][6], const uint8_t TOTAL_IC);
 
 void print_cells(const uint8_t TOTAL_IC, uint16_t cell_codes[][12]);
 
-void print_aux(uint16_t aux_codes[][6]);
+void print_aux(uint16_t aux_codes[][6], const uint8_t TOTAL_IC);
 
-void print_rxconfig(uint8_t rx_cfg[][8]);
+void print_rxconfig(uint8_t rx_cfg[][8], const uint8_t TOTAL_IC);
 
 void read_eeprom_ltc (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]);
 
