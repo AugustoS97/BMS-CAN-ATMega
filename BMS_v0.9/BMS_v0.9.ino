@@ -1,5 +1,3 @@
-#include <Keyboard.h>
-
 /*
    AUTOR: AUGUSTO SAMUEL HERNÁNDEZ MARTÍN
    FECHA: 05/05/2021
@@ -57,8 +55,9 @@ bool force_bal_flag = false; //Flag que se activa cuando el balanceo se está fo
 //Parametros de las NTC
 uint8_t N_NTC = 32; //Numero de NTCs conectadas al BMS
 const int BETTA = 3977; //Betta de la NTC
-const int To = 25 ; //To es 25ºC para NTC
-const int Ro = 1000 ; //Ro es 1kOhm
+const int To = 25+273 ; //To es 25ºC para NTC
+const int Ro = 10000 ; //Ro es 10kOhm
+const int Raux = 9800; //Raxu del divisor de tension es de 9.8kOhm
 const int Vcc = 5; //Vcc es de 5V para sensor de NTC
 
 
@@ -379,7 +378,7 @@ void loop() {
   }
 
   //Se miden todas las temperaturas de las celdas y se guardan en cell_temp. Además se obtiene la T_max
-  T_max = measure_all_temp(cell_temp, N_NTC, BETTA, To, Ro, Vcc, PIN_ANALOG_NTC);
+  T_max = measure_all_temp(cell_temp, N_NTC, BETTA, To, Ro, Raux, Vcc, PIN_ANALOG_NTC);
 
   //Se conviertes las temperaturas a mensajes CAN
   temp_to_can_msg(cell_temp, N_NTC, canTempMsg1, canTempMsg2, canTempMsg3, canTempMsg4);
@@ -701,12 +700,12 @@ void select_channel_MUX(const uint8_t channel) {
     Serial.println(channel);
   #endif
   if (channel <= 32) {
-    uint8_t msg = (0b11000000 | channel); //Se genera el mensaje con el valor de 1 en Enable y CSA y se concatena el canal a elegir
+    uint8_t msg = (0b00000000 | channel); //Se genera el mensaje con el valor de 1 en Enable y CSA y se concatena el canal a elegir
     #ifdef SERIAL_DEBUG
         Serial.print("Mensaje SPI es: ");
         Serial.println(msg, BIN); //Se imprime el mensaje a enviar por SPI en binario
     #endif
-    SPI.beginTransaction(SPISettings(16000000, MSBFIRST, SPI_MODE1)); //HAY QUE REVISAR EL MODO DEL SPI PROBÁNDOLO
+    SPI.beginTransaction(SPISettings(8000000, MSBFIRST, SPI_MODE2)); //HAY QUE REVISAR EL MODO DEL SPI PROBÁNDOLO
     digitalWrite(PIN_SYNC_MUX, LOW); //Se pone a baja el CS del ADG731
     SPI.transfer(msg); //Se envia el mensaje por SPI
     digitalWrite(PIN_SYNC_MUX, HIGH);
@@ -717,13 +716,13 @@ void select_channel_MUX(const uint8_t channel) {
 /************************************
   Se leen las temperaturas
  **************************************/
-float measure_temp(const int BETTA, const int To, const int Ro, const int Vcc, const uint8_t channel, const uint8_t AnalogInput) { //
+float measure_temp(const int BETTA, const int To, const int Ro, const int Raux, const int Vcc, const uint8_t channel, const uint8_t AnalogInput) { //
   select_channel_MUX(channel); //Se elige la entrada a medir llamando a la función anterior
   float v_medida = (float(Vcc)/1023.0)*float(analogRead(AnalogInput));
-  float rntc = float(Ro)/((Vcc/v_medida)-1); //Vdividor = Vcc*R_NTC/(R_NTC+Ro)
+  float rntc = float(Raux)/((Vcc/v_medida)-1); //Vdividor = Vcc*R_NTC/(R_NTC+Ro)
+  //rntc=4372;
   //float rntc = Ro * (Vcc / (analogRead(AnalogInput) * 5.0 / 1023.0) - 1); //Vdivisor=R_o/(R_o+R_NTC)
-  float t_medida = float(BETTA) / (log(rntc / float(Ro)) + (float(BETTA) / float(To)));
-  //t_medida = 28.3; //ESTA LINEA ESTA PARA PRUEBA **********************************************************************************************************************************************************************************
+  float t_medida = (float(BETTA) / (log(rntc / float(Ro)) + (float(BETTA) / float(To))))-273; //Se obtiene en ºC
   #ifdef SERIAL_DEBUG
     Serial.println("Channel  | Tmedida ºC");
     Serial.print(channel);
@@ -737,10 +736,10 @@ float measure_temp(const int BETTA, const int To, const int Ro, const int Vcc, c
 /************************************
   Se leen las temperaturas y se almacenan en un array pasado por referencia
  **************************************/
-float measure_all_temp(float array_temp[], const uint8_t N_NTC, const int BETTA, const int To, const int Ro, const int Vcc, const uint8_t AnalogInput) {
+float measure_all_temp(float array_temp[], const uint8_t N_NTC, const int BETTA, const int To, const int Ro,const int Raux, const int Vcc, const uint8_t AnalogInput) {
   float T_max = 0;
   for (uint8_t i = 0; i < N_NTC ; i++) {
-    array_temp[i] = measure_temp(BETTA, To, Ro, Vcc, i,  AnalogInput);
+    array_temp[i] = measure_temp(BETTA, To, Ro, Raux, Vcc, i,  AnalogInput);
     if (array_temp[i] > T_max) {
       T_max = array_temp[i];
     }
