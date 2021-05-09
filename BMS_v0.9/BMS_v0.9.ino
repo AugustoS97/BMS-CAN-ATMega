@@ -869,7 +869,13 @@ void temp_to_can_msg(float array_temp[], const uint8_t N_NTC, struct can_frame &
 float calculate_SOC(int current, float voltage, float resistor) { //Devuelve el SOC en porcentaje 0-100%
   float Voc = voltage - float(current)/1000.0 * resistor; //Corriente es positiva cuando se carga bateria. Voc=Vo-I*R
   //Se evalua la expresion del voltaje para obtener el SOC
-  float SOC = 99.8;
+  float SOC = (-0.4203*pow(Voc, 4) + 5.6962*pow(Voc,3) - 28.2351*pow(Voc,2) + 61.1863*Voc - 49.1338)*100.0;
+  if (SOC > 100.0){
+    SOC = 100;
+  }
+  else if (SOC <= 0.0){
+    SOC = 0.0;
+  }
   return SOC;
 }
 
