@@ -127,7 +127,7 @@ void setup(){
   }
   #ifdef SERIAL_DEBUG
     Serial.begin(115200);
-    print_config(tx_cfg);
+    print_config(tx_cfg, TOTAL_IC);
   #endif
   Serial.begin(115200);
 
@@ -644,7 +644,7 @@ void can_msg_rcv(){
   LTC6804_wrcfg(TOTAL_IC, tx_cfg); //Se actualiza la configuracion del LTC
   delay(10);
   #ifdef SERIAL_DEBUG
-    print_config(tx_cfg);
+    print_config(tx_cfg, TOTAL_IC);
   #endif
   interrupts();
 }

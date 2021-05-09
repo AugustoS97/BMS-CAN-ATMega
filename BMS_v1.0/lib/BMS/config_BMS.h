@@ -2,6 +2,7 @@
 #define config_BMS_h
 
 #include <stdint.h>
+//#define SERIAL_DEBUG
 
 #define CFGR0_addr 1
 #define VUV_addr 2
