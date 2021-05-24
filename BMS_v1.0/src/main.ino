@@ -52,7 +52,8 @@ float UV_THR = 1.0 ; //Tension minima de una celda
 float OV_THR = 5.0; //Tension maxima de una celda
 float MAX_VCELL_DIFF = 0.005; //Diferencia de tension maxima entre celdas
 uint8_t TOTAL_CELL = 4; //Número de celdas totales
-
+uint8_t NCELL_PARALLEL = 3; //Numero de celdas en paralelo
+int16_t CURRENT_OFFSET = 0; //Offset del sensor de corriente (en mA)
 
 
 uint8_t BALANCING_TYPE = 0b11; //Tipo de balanceo. Bit0 balanceo durante carga. Bit1 balanceo durante descarga. Por defecto se activa el balanceo en carga y descarga.
@@ -136,7 +137,7 @@ void setup(){
   init_cfg(tx_cfg, TOTAL_IC);      //Inicializa el array de configuración del 6804 a los valores por defecto
 
   read_eeprom_ltc(TOTAL_IC, tx_cfg); //Actualiza el array de config del LTC6804 con los valores almacenados en la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE); //Se leen las configuraciones del ATMEGA desde EEPROM
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET); //Se leen las configuraciones del ATMEGA desde EEPROM
 
   init_mcp2515(CAN_125KBPS, MCP_8MHZ, 0); //Se iniciliaza el MCP2515 para comunicacion CAN a 125 KBPS
   mcp2515.setConfigMode(); //Se configuran las mascaras del MCP2515 para aceptar solo mensajes con ID 0b000000xxxxxx
@@ -183,7 +184,7 @@ void loop() {
   }
 
   //Se mide la corriente y se envía el valor por CAN
-  int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR);
+  int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR, CURRENT_OFFSET);
   current_to_can_msg (current, canCurrentMsg);
   send_can_msg(canCurrentMsg);
 
@@ -552,6 +553,27 @@ void can_msg_rcv(){
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
+      case NCELL_PARALLEL_MSG_ID:{
+        if(EEPROM.read(NCELL_PARALLEL_addr) != can_msg.data[0]){
+          EEPROM.write(NCELL_PARALLEL_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
+        }
+        #ifdef SERIAL_DEBUG
+        Serial.print("NCELL PARALEL:");
+        Serial.println(can_msg.data[0],BIN);
+        #endif
+        break;}
+      case CURRENT_OFFSET_MSG_ID:{
+        if(EEPROM.read(CURRENT_OFFSET_addr) != can_msg.data[0]){
+          EEPROM.write(CURRENT_OFFSET_addr, can_msg.data[0]); //Este mensaje CAN de configuración es de 2 bytes
+          EEPROM.write(CURRENT_OFFSET_addr +1, can_msg.data[1]); //Este byte lleva el signo del offset
+        }
+        #ifdef SERIAL_DEBUG
+        Serial.print("Current Offset:");
+        Serial.print(can_msg.data[1], BIN);
+        Serial.print("  Valor: ");
+        Serial.println(can_msg.data[0],BIN);
+        #endif
+        break;}
       case N_NTC_MSG_ID:{
         if(EEPROM.read(N_NTC_addr) != can_msg.data[0]){
          EEPROM.write(N_NTC_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
@@ -622,7 +644,16 @@ void can_msg_rcv(){
           can_msg.data[6] =   rx_cfg[0][4]; //En bytes 6 y 7 se envian celdas actualmente en balanceo
           can_msg.data[7] =   rx_cfg[0][5] & 0b00001111; //Podria usarse una funcion para obtener config
         }
-        mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN con las configuraciones
+        mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN 1 con las configuraciones
+
+        can_msg.can_id = ANSWER_CONFIG_MSG_2_ID;
+        can_msg.can_dlc = 5;
+        can_msg.data[0] =   EEPROM.read(NCELL_PARALLEL_addr);
+        can_msg.data[1] =   EEPROM.read(CURRENT_OFFSET_addr);
+        can_msg.data[2] =   EEPROM.read(CURRENT_OFFSET_addr +1); //El signo del offset está en el siguiente byte
+        can_msg.data[3] =   EEPROM.read(TSLEEP_addr);
+        can_msg.data[4] =   EEPROM.read(BALANCING_TYPE_addr);
+        mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN 2 con las configuraciones
         break;}
       case MAX_DIFF_CELL_MSG_ID:{
         if(EEPROM.read(MAX_DIFF_CELL_addr) != can_msg.data[0]){
@@ -639,7 +670,7 @@ void can_msg_rcv(){
     }
   }
   read_eeprom_ltc (TOTAL_IC, tx_cfg); //Se actualiza el array de config del LTC leyendo los parametros de la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE); //Se actualizan los valores de config del ATMega
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET); //Se actualizan los valores de config del ATMega
   LTC6804_initialize();
   LTC6804_wrcfg(TOTAL_IC, tx_cfg); //Se actualiza la configuracion del LTC
   delay(10);
