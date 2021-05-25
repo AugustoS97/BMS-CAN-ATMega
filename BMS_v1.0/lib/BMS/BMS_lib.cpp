@@ -34,19 +34,30 @@
       }
     }
   }
-
+  //Serial.print("V minimo: ");
+  //Serial.println(V_min,4);
+  //Serial.print("V maximo: ");
+  //Serial.println(V_max,4);
   //Se busca que celdas balancear
   for (int i=0; i< TOTAL_IC; i++){//Se obtiene V_min y V_max
     for(int j=0; j<TOTAL_CELL; j++){
       float cell_volt = cell_codes[i][j]*0.0001; //Voltaje de la celda j en Voltios
-       if((((cell_volt -V_min) > max_difference)||(cell_volt > VOV_THR))&(cell_volt >= (VUV_THR + 2*max_difference))){
+      //Serial.print("Diferencia de la celda ");
+      //Serial.print(j);
+      //Serial.print(" con la menor: ");
+      //Serial.println(cell_volt - V_min,4);
+        if((((cell_volt - V_min) >= (max_difference))&(cell_volt > VUV_THR))||(cell_volt >= VOV_THR)){
        //Si la celda presenta una diferencia con la de menor V superior a la máx. diferencia o supera la máxima tensión, se balancea.
         cell_to_balance = (cell_to_balance | (0b1 << j));
+        //Serial.print("Balancear celda: ");
+        //Serial.println(j+1);
        }
        else{
-        if ((cell_volt < (VOV_THR - 2*max_difference)) || (cell_volt < VUV_THR) || ((cell_volt- V_min) < max_difference)){
+        if((cell_volt - V_min) <= (max_difference-0.0003)&&(cell_volt < (VOV_THR - 2*max_difference))){
           //Si la celda ha bajado del umbral de sobrevoltaje o está por debajo de la tensión mínima o dentro del rango de máxima diferencia, se para el balanceo
           cell_to_balance = (cell_to_balance & ~(uint16_t(0b1 << j))); //Pongo a 0 el bit de la celda que no se debe balancear
+          //Serial.print("no se balancea celda: ");
+          //Serial.println(j+1);
         }
        }
     }
@@ -112,7 +123,7 @@ void read_eeprom_ltc (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]){
 *************************************/
 void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
     uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE,
-    uint8_t &NCELL_PARALLEL, int16_t &CURRENT_OFFSET){
+    uint8_t &NCELL_PARALLEL, int16_t &CURRENT_OFFSET, uint8_t &TSLEEP){
   uint8_t value = uint8_t(EEPROM.read(NCELL_addr));
   if( value <= 12){
     TOTAL_CELL = value;
@@ -144,6 +155,13 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
   else{
     CURRENT_OFFSET = value;
   }
+  value = uint8_t(EEPROM.read(TSLEEP_addr));
+  if(value <= 100){
+    TSLEEP = value;
+  }
+  else{
+    TSLEEP = 0;
+  }
 
 }
 
@@ -170,12 +188,6 @@ void start_cell_voltage_ADC(const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]) {
  **************************************/
 void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_t tx_cfg[][6], uint16_t cell_codes[][12]) {
   start_cell_voltage_ADC(TOTAL_IC, tx_cfg); //Realiza la conversión ADC de las tensiones
-  uint16_t cell_codes_aux[TOTAL_IC][12]; //Se crea un array auxiliar
-  for (int i = 0; i < TOTAL_IC; i++) { //Se almacena la lectura anterior en el array auxiliar
-    for (int j = 0; j < TOTAL_CELL; j++) {
-      cell_codes_aux[i][j] = cell_codes[i][j];
-    }
-  }
   int8_t error; //Se crea la variable que almacena el estado de error del CRC
   error = LTC6804_rdcv(0, TOTAL_IC, cell_codes); // Se lee y hace un parses de las tensiones de las celdas
   if (error == -1) { //Si el error vale -1 es que hubo un error con el checkeo del CRC
@@ -184,14 +196,14 @@ void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_
   #endif
     for (int i = 0; i < TOTAL_IC; i++) { //Si los valores recibidos no son correctos, se recuperan los valores de la lectura anterior
       for (int j = 0; j < TOTAL_CELL; j++) {
-        cell_codes[i][j] = cell_codes_aux[i][j];
+        cell_codes[i][j] = 65535;
       }
     }
   }
   else { //Si no hay error con el CRC se procede a mostrar los valores medidos
-  #ifdef SERIAL_DEBUG
+  //#ifdef SERIAL_DEBUG
     print_cells(TOTAL_IC, cell_codes); //Se muestran los valores de tensión medidos
-  #endif
+  //#endif
   }
 }
 

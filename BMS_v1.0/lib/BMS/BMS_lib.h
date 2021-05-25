@@ -29,7 +29,7 @@ void read_eeprom_ltc (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]);
 
 void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
     uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE,
-    uint8_t &NCELL_PARALLEL, int16_t &CURRENT_OFFSET);
+    uint8_t &NCELL_PARALLEL, int16_t &CURRENT_OFFSET, uint8_t &TSLEEP);
 
 void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_t tx_cfg[][6], uint16_t cell_codes[][12]);
 
