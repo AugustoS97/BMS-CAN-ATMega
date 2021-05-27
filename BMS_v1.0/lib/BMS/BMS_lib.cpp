@@ -156,7 +156,7 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
     CURRENT_OFFSET = value;
   }
   value = uint8_t(EEPROM.read(TSLEEP_addr));
-  if(value <= 100){
+  if(value <= 220){
     TSLEEP = value;
   }
   else{
@@ -226,9 +226,9 @@ float calc_volt_total(const uint16_t cell_codes[][12], const uint8_t TOTAL_IC, c
 
 
 /************************************
-  Se calcula el SOC del pack de baterías
+  Se calcula el SOC del pack de baterías. (Current en mA y Voltaje en Voltios. Resistor en Ohm)
  **************************************/
-float calculate_SOC(int current, float voltage, float resistor) { //Devuelve el SOC en porcentaje 0-100%
+float calculate_SOC(float current, float voltage, float resistor) { //Devuelve el SOC en porcentaje 0-100%
   float Voc = voltage - float(current)/1000.0 * resistor; //Corriente es positiva cuando se carga bateria. Voc=Vo-I*R
   //Se evalua la expresion del voltaje para obtener el SOC
   float SOC = (-0.4203*pow(Voc, 4) + 5.6962*pow(Voc,3) - 28.2351*pow(Voc,2) + 61.1863*Voc - 49.1338)*100.0;

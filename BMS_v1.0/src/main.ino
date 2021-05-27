@@ -48,10 +48,10 @@ struct can_frame canSOCMsg; //Mensaje CAN para el SOC
  ********************************************************/
 float UVBAT_THR = 12.00 ; //Tensión minima de la batería
 float OVBAT_THR = 16.00 ; //Tensión maxima de la batería
-float UV_THR = 1.0 ; //Tension minima de una celda
-float OV_THR = 5.0; //Tension maxima de una celda
+float UV_THR = 3.0 ; //Tension minima de una celda
+float OV_THR = 4; //Tension maxima de una celda
 float MAX_VCELL_DIFF = 0.005; //Diferencia de tension maxima entre celdas
-uint8_t TOTAL_CELL = 4; //Número de celdas totales
+uint8_t TOTAL_CELL = 7; //Número de celdas totales
 uint8_t NCELL_PARALLEL = 3; //Numero de celdas en paralelo
 int16_t CURRENT_OFFSET = 0; //Offset del sensor de corriente (en mA)
 uint8_t TSLEEP = 0; //tiempo de reposo entre ciclos
@@ -176,14 +176,14 @@ void loop() {
   //Se envia el valor de las tensiones de celdas por CAN
   send_can_msg(canBatMsg1);
 
-  if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo y tercer mensaje CAN
+  if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo mensaje CAN
     send_can_msg(canBatMsg2);
   }
-  if(TOTAL_CELL >= 9){
+  if(TOTAL_CELL > 8){ // Si hay más de 8 celdas se envia tercer mensaje CAN
     send_can_msg (canBatMsg3);
   }
 
-  //Se mide la corriente y se envía el valor por CAN
+  //Se mide la corriente (en mA) y se envía el valor por CAN
   int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR, CURRENT_OFFSET);
   current_to_can_msg (current, canCurrentMsg);
   send_can_msg(canCurrentMsg);
@@ -194,7 +194,7 @@ void loop() {
     switch(BALANCING_TYPE){
       case 0:{ //Caso de balanceo desactivado
         force_balancing (TOTAL_IC, tx_cfg, 0b00000000, true); //No se balanceo ninguna celda
-        force_balancing (TOTAL_IC, tx_cfg, 0b00000000, false); //Se balancea celdas 1 a 8
+        force_balancing (TOTAL_IC, tx_cfg, 0b00000000, false);
       break;}
       case 1:{ //Balanceo solo durante la carga. Corriente medida es positiva
         if (current >=0){ //Si se esta cargando se balancea
@@ -250,15 +250,16 @@ void loop() {
     send_can_msg(canTempMsg4);
   }
 
-  //Estimar SOH y SOC y enviarlos por CAN
-  float SOC =  calculate_SOC(current, voltaje_total, internal_resistor);//Devuelve el SOC en porcentaje 0-100%
+  //Estimar SOH y SOC y enviarlos por CAN. Se estima el SOC de un celda promedio. Es decir con la V promedio de las Celdas
+  // y asumiendo que cada celda proporciona la misma corriente en cada instante
+  float SOC =  calculate_SOC(float(current/NCELL_PARALLEL), float(voltaje_total/TOTAL_CELL), internal_resistor);//Devuelve el SOC en porcentaje 0-100%
   SOC_can_msg(SOC, canSOCMsg);// Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 1000
   send_can_msg(canSOCMsg);
 
   //Se duerme el tiempo indicado
-  for (uint8_t i=0 ; i < TSLEEP; i++){
-    LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_OFF);
-  }
+  /*for (uint8_t i=0 ; i < TSLEEP; i++){
+    LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_ON);
+  }*/
 
 } //FIN DEL LOOP
 
@@ -464,6 +465,7 @@ void temp_to_can_msg(float array_temp[], const uint8_t N_NTC, struct can_frame &
  **************************************/
 void SOC_can_msg(float SOC, struct can_frame &SOC_msg) { // Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 100
   uint16_t _SOC = round(SOC * 100);
+  Serial.println(_SOC);
   SOC_msg.data[1] = uint8_t(_SOC >> 8);
   SOC_msg.data[0] = uint8_t(_SOC & 0b0000000011111111);
 }
@@ -516,8 +518,6 @@ void init_mcp2515(const CAN_SPEED canSpeed, CAN_CLOCK canClock, int mode) {
 
 void can_msg_rcv(){
   noInterrupts();
-  //Serial.println("Interrupcion");
-  //delay(1000);
   if(mcp2515.readMessage(&can_msg) == MCP2515::ERROR_OK){
     uint8_t can_id = can_msg.can_id;
     Serial.print("CAN ID: ");
@@ -573,6 +573,10 @@ void can_msg_rcv(){
         if(EEPROM.read(CURRENT_OFFSET_addr) != can_msg.data[0]){
           EEPROM.write(CURRENT_OFFSET_addr, can_msg.data[0]); //Este mensaje CAN de configuración es de 2 bytes
           EEPROM.write(CURRENT_OFFSET_addr +1, can_msg.data[1]); //Este byte lleva el signo del offset
+          Serial.print("Offset de corriente: ");
+          Serial.println(can_msg.data[0]);
+          Serial.print("Signo del offset: ");
+          Serial.println(can_msg.data[1]);
         }
         #ifdef SERIAL_DEBUG
         Serial.print("Current Offset:");

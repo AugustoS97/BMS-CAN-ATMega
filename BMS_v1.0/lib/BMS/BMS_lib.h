@@ -41,7 +41,7 @@ void balancing(const uint8_t TOTAL_IC,  uint16_t cell_codes[][12], uint8_t tx_cf
 
 float calc_volt_total(const uint16_t cell_codes[][12], const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL) ;
 
-float calculate_SOC(int current, float voltage, float resistor);
+float calculate_SOC(float current, float voltage, float resistor);
 
 void calculate_SOH();
 
