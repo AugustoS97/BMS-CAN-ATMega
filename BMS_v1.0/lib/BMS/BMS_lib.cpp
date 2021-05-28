@@ -39,12 +39,12 @@
   for (int i=0; i< TOTAL_IC; i++){//Se obtiene V_min y V_max
     for(int j=0; j<TOTAL_CELL; j++){
       float cell_volt = cell_codes[i][j]*0.0001; //Voltaje de la celda j en Voltios
-       if((((cell_volt -V_min) > max_difference)||(cell_volt > VOV_THR))&(cell_volt >= (VUV_THR + 2*max_difference))){
+        if((((cell_volt - V_min) >= (max_difference))&(cell_volt > VUV_THR))||(cell_volt >= VOV_THR)){
        //Si la celda presenta una diferencia con la de menor V superior a la máx. diferencia o supera la máxima tensión, se balancea.
         cell_to_balance = (cell_to_balance | (0b1 << j));
        }
        else{
-        if ((cell_volt < (VOV_THR - 2*max_difference)) || (cell_volt < VUV_THR) || ((cell_volt- V_min) < max_difference)){
+        if((cell_volt - V_min) <= (max_difference-0.0003)&&(cell_volt < (VOV_THR - 2*max_difference))){
           //Si la celda ha bajado del umbral de sobrevoltaje o está por debajo de la tensión mínima o dentro del rango de máxima diferencia, se para el balanceo
           cell_to_balance = (cell_to_balance & ~(uint16_t(0b1 << j))); //Pongo a 0 el bit de la celda que no se debe balancear
         }
