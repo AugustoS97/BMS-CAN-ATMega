@@ -14,7 +14,7 @@
 #include "mcp2515.h"
 
 
-//#include <LowPower.h>
+#include <LowPower.h>
 
 MCP2515 mcp2515(9); //Se declara el objeto de la clase MCP2515
 
@@ -54,6 +54,7 @@ float MAX_VCELL_DIFF = 0.005; //Diferencia de tension maxima entre celdas
 uint8_t TOTAL_CELL = 4; //Número de celdas totales
 uint8_t NCELL_PARALLEL = 3; //Numero de celdas en paralelo
 int16_t CURRENT_OFFSET = 0; //Offset del sensor de corriente (en mA)
+uint8_t TSLEEP = 0; //tiempo de reposo entre ciclos
 
 uint8_t BALANCING_TYPE = 0b11; //Tipo de balanceo. Bit0 balanceo durante carga. Bit1 balanceo durante descarga. Por defecto se activa el balanceo en carga y descarga.
 bool force_bal_flag = false; //Flag que se activa cuando el balanceo se está forzando desde el programador. Con esto activo no se tiene en cuenta las condiciones de balanceo
@@ -136,7 +137,7 @@ void setup(){
   init_cfg(tx_cfg, TOTAL_IC);      //Inicializa el array de configuración del 6804 a los valores por defecto
 
   read_eeprom_ltc(TOTAL_IC, tx_cfg); //Actualiza el array de config del LTC6804 con los valores almacenados en la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET); //Se leen las configuraciones del ATMEGA desde EEPROM
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET, TSLEEP); //Se leen las configuraciones del ATMEGA desde EEPROM
 
   init_mcp2515(CAN_125KBPS, MCP_8MHZ, 0); //Se iniciliaza el MCP2515 para comunicacion CAN a 125 KBPS
   mcp2515.setConfigMode(); //Se configuran las mascaras del MCP2515 para aceptar solo mensajes con ID 0b000000xxxxxx
@@ -253,6 +254,10 @@ void loop() {
   float SOC =  calculate_SOC(float(current/NCELL_PARALLEL), float(voltaje_total/TOTAL_CELL), internal_resistor);//Devuelve el SOC en porcentaje 0-100%
   SOC_can_msg(SOC, canSOCMsg);// Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 1000
   send_can_msg(canSOCMsg);
+
+  /*for (uint8_t i=0 ; i < TSLEEP; i++){
+    LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_ON);
+  }*/
 
 } //FIN DEL LOOP
 
@@ -648,6 +653,7 @@ void can_msg_rcv(){
         can_msg.data[0] =   EEPROM.read(NCELL_PARALLEL_addr);
         can_msg.data[1] =   EEPROM.read(CURRENT_OFFSET_addr2);
         can_msg.data[2] =   EEPROM.read(CURRENT_OFFSET_addr);
+        can_msg.data[3] =   EEPROM.read(TSLEEP_addr);
         can_msg.data[4] =   EEPROM.read(BALANCING_TYPE_addr);
         mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN 2 con las configuraciones
         break;}
@@ -666,7 +672,7 @@ void can_msg_rcv(){
     }
   }
   read_eeprom_ltc (TOTAL_IC, tx_cfg); //Se actualiza el array de config del LTC leyendo los parametros de la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET); //Se actualizan los valores de config del ATMega
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET, TSLEEP); //Se actualizan los valores de config del ATMega
   LTC6804_initialize();
   LTC6804_wrcfg(TOTAL_IC, tx_cfg); //Se actualiza la configuracion del LTC
   delay(10);
