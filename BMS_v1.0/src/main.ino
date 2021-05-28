@@ -14,7 +14,7 @@
 #include "mcp2515.h"
 
 
-#include <LowPower.h>
+//#include <LowPower.h>
 
 MCP2515 mcp2515(9); //Se declara el objeto de la clase MCP2515
 
@@ -48,13 +48,12 @@ struct can_frame canSOCMsg; //Mensaje CAN para el SOC
  ********************************************************/
 float UVBAT_THR = 12.00 ; //Tensión minima de la batería
 float OVBAT_THR = 16.00 ; //Tensión maxima de la batería
-float UV_THR = 3.0 ; //Tension minima de una celda
-float OV_THR = 4; //Tension maxima de una celda
+float UV_THR = 1.0 ; //Tension minima de una celda
+float OV_THR = 5.0; //Tension maxima de una celda
 float MAX_VCELL_DIFF = 0.005; //Diferencia de tension maxima entre celdas
-uint8_t TOTAL_CELL = 7; //Número de celdas totales
-uint8_t NCELL_PARALLEL = 3; //Numero de celdas en paralelo
-int16_t CURRENT_OFFSET = 0; //Offset del sensor de corriente (en mA)
-uint8_t TSLEEP = 0; //tiempo de reposo entre ciclos
+uint8_t TOTAL_CELL = 4; //Número de celdas totales
+
+
 
 uint8_t BALANCING_TYPE = 0b11; //Tipo de balanceo. Bit0 balanceo durante carga. Bit1 balanceo durante descarga. Por defecto se activa el balanceo en carga y descarga.
 bool force_bal_flag = false; //Flag que se activa cuando el balanceo se está forzando desde el programador. Con esto activo no se tiene en cuenta las condiciones de balanceo
@@ -137,7 +136,7 @@ void setup(){
   init_cfg(tx_cfg, TOTAL_IC);      //Inicializa el array de configuración del 6804 a los valores por defecto
 
   read_eeprom_ltc(TOTAL_IC, tx_cfg); //Actualiza el array de config del LTC6804 con los valores almacenados en la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET, TSLEEP); //Se leen las configuraciones del ATMEGA desde EEPROM
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE); //Se leen las configuraciones del ATMEGA desde EEPROM
 
   init_mcp2515(CAN_125KBPS, MCP_8MHZ, 0); //Se iniciliaza el MCP2515 para comunicacion CAN a 125 KBPS
   mcp2515.setConfigMode(); //Se configuran las mascaras del MCP2515 para aceptar solo mensajes con ID 0b000000xxxxxx
@@ -166,51 +165,35 @@ void setup(){
 ***********************************************************************/
 
 void loop() {
-  static unsigned long last_time_bat_msg = 0;
-  static unsigned long last_time_current = 0;
-  static unsigned long last_time_temp = 0;
-  static unsigned long last_time_soc = 0;
   static float T_max = 0.0;
   //Comienza la lectura y conversión de las tensiones leidas por el LTC6804
-  Serial.println("1");
   read_cell_voltage (TOTAL_IC, TOTAL_CELL, tx_cfg, cell_codes);
-  Serial.println("2");
+
   //Se convierten los valores de la tensión de las celdas a mensaje CAN
   cell_voltage_to_can_msg (cell_codes, TOTAL_IC, TOTAL_CELL, canBatMsg1, canBatMsg2, canBatMsg3);
 
-  Serial.println("3");
-  if(millis() > last_time_bat_msg + TIME_BWN_MSG){ //Si ha pasado 1 segundo desde el ultimo mensaje CAN
-    //Se envia el valor de las tensiones de celdas por CAN
-    send_can_msg(canBatMsg1);
+  //Se envia el valor de las tensiones de celdas por CAN
+  send_can_msg(canBatMsg1);
 
-    if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo mensaje CAN
-      send_can_msg(canBatMsg2);
-    }
-    if(TOTAL_CELL > 8){ // Si hay más de 8 celdas se envia tercer mensaje CAN
-      send_can_msg (canBatMsg3);
-    }
-    last_time_bat_msg = millis();
+  if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo y tercer mensaje CAN
+    send_can_msg(canBatMsg2);
+  }
+  if(TOTAL_CELL >= 9){
+    send_can_msg (canBatMsg3);
   }
 
-  Serial.println("4");
-  //Se mide la corriente (en mA) y se envía el valor por CAN
-  int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR, CURRENT_OFFSET);
-  Serial.println("5");
+  //Se mide la corriente y se envía el valor por CAN
+  int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR);
   current_to_can_msg (current, canCurrentMsg);
-  if(millis() > last_time_current + TIME_BWN_MSG){ //Si ha pasado 1 segundo desde ultimo mensaje
-    send_can_msg(canCurrentMsg);
-    last_time_current = millis();
-  }
-
+  send_can_msg(canCurrentMsg);
 
 
   //Verificar y activar el balanceo de las celdas necesarias
-  Serial.println("6");
   if(force_bal_flag == false){ //Si no se ha forzado el balanceo, se comprueba el tipo de balanceo
     switch(BALANCING_TYPE){
       case 0:{ //Caso de balanceo desactivado
         force_balancing (TOTAL_IC, tx_cfg, 0b00000000, true); //No se balanceo ninguna celda
-        force_balancing (TOTAL_IC, tx_cfg, 0b00000000, false);
+        force_balancing (TOTAL_IC, tx_cfg, 0b00000000, false); //Se balancea celdas 1 a 8
       break;}
       case 1:{ //Balanceo solo durante la carga. Corriente medida es positiva
         if (current >=0){ //Si se esta cargando se balancea
@@ -239,53 +222,37 @@ void loop() {
     }
   }
 
-  Serial.println("7");
   //Calcular tensión total y generar aviso de tension o Temperatura
   float voltaje_total = calc_volt_total(cell_codes, TOTAL_IC, TOTAL_CELL);
-  Serial.println("8");
+
   bool genera_warning = warning_msg(voltaje_total, UVBAT_THR, OVBAT_THR, T_max, warning);
   if (genera_warning) {
     //Se envia el aviso
     send_can_msg(warning);
   }
-  Serial.println("9");
+
   //Se miden todas las temperaturas de las celdas y se guardan en cell_temp. Además se obtiene la T_max
   T_max = measure_all_temp(cell_temp, N_NTC, BETTA, To, Ro, Raux, Vcc, PIN_ANALOG_NTC, PIN_SYNC_MUX);
-  Serial.println("10");
+
   //Se conviertes las temperaturas a mensajes CAN
   temp_to_can_msg(cell_temp, N_NTC, canTempMsg1, canTempMsg2, canTempMsg3, canTempMsg4);
-  Serial.println("11");
-  if (millis() > last_time_temp + TIME_BWN_MSG){ // Si ha pasaod 1 segundo desde el ultimo mensaje
-    //Se envian las Temperaturas de las celdas por CAN. Cada mensaje tiene 8 temperaturas
-    send_can_msg(canTempMsg1); //Primeras 8 NTC
-    if (N_NTC >8){ //NTC de 9 a 16
-      send_can_msg(canTempMsg2);
-    }
-    if (N_NTC > 16){ //NTC de 17 a 24
-      send_can_msg(canTempMsg3);
-    }
-    if (N_NTC >24){ //NTC de 24 a 32
-      send_can_msg(canTempMsg4);
-    }
-    last_time_temp = millis();
+
+  //Se envian las Temperaturas de las celdas por CAN. Cada mensaje tiene 8 temperaturas
+  send_can_msg(canTempMsg1); //Primeras 8 NTC
+  if (N_NTC >8){ //NTC de 9 a 16
+    send_can_msg(canTempMsg2);
+  }
+  if (N_NTC > 16){ //NTC de 17 a 24
+    send_can_msg(canTempMsg3);
+  }
+  if (N_NTC >24){ //NTC de 24 a 32
+    send_can_msg(canTempMsg4);
   }
 
-  Serial.println("12");
-  //Estimar SOH y SOC y enviarlos por CAN. Se estima el SOC de un celda promedio. Es decir con la V promedio de las Celdas
-  // y asumiendo que cada celda proporciona la misma corriente en cada instante
-  float SOC =  calculate_SOC(float(current/NCELL_PARALLEL), float(voltaje_total/TOTAL_CELL), internal_resistor);//Devuelve el SOC en porcentaje 0-100%
+  //Estimar SOH y SOC y enviarlos por CAN
+  float SOC =  calculate_SOC(current, voltaje_total, internal_resistor);//Devuelve el SOC en porcentaje 0-100%
   SOC_can_msg(SOC, canSOCMsg);// Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 1000
-    Serial.println("12");
-  if (millis() > last_time_soc + TIME_BWN_MSG){// Si ha pasado 1 segundo desde el ultimo mensaje
-    send_can_msg(canSOCMsg);
-    last_time_soc = millis(); //Se actualiza el tiempo en el último mensaje
-  }
-
-
-  //Se duerme el tiempo indicado
-  /*for (uint8_t i=0 ; i < TSLEEP; i++){
-    LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_ON);
-  }*/
+  send_can_msg(canSOCMsg);
 
 } //FIN DEL LOOP
 
@@ -542,12 +509,11 @@ void init_mcp2515(const CAN_SPEED canSpeed, CAN_CLOCK canClock, int mode) {
 
 
 void can_msg_rcv(){
-  Serial.println("Entrando en una interrupcion");
   noInterrupts();
+  //Serial.println("Interrupcion");
+  //delay(1000);
   if(mcp2515.readMessage(&can_msg) == MCP2515::ERROR_OK){
     uint8_t can_id = can_msg.can_id;
-    Serial.print("CAN ID: ");
-    Serial.println(can_id);
     //uint8_t can_dlc = can_msg.can_dlc;
     switch(can_id){ //Segun el ID recibido se guarda en la EEPROM en la posicion de memoria que corresponde
       case VUV_MSG_ID:{
@@ -583,27 +549,6 @@ void can_msg_rcv(){
         }
         #ifdef SERIAL_DEBUG
         Serial.print("NCELL:");
-        Serial.println(can_msg.data[0],BIN);
-        #endif
-        break;}
-      case NCELL_PARALLEL_MSG_ID:{
-        if(EEPROM.read(NCELL_PARALLEL_addr) != can_msg.data[0]){
-          EEPROM.write(NCELL_PARALLEL_addr, can_msg.data[0]); //Todos los mensajes CAN de configuracion son de 1 byte
-        }
-        #ifdef SERIAL_DEBUG
-        Serial.print("NCELL PARALEL:");
-        Serial.println(can_msg.data[0],BIN);
-        #endif
-        break;}
-      case CURRENT_OFFSET_MSG_ID:{
-        if(EEPROM.read(CURRENT_OFFSET_addr) != can_msg.data[0]){
-          EEPROM.write(CURRENT_OFFSET_addr, can_msg.data[0]); //Este mensaje CAN de configuración es de 2 bytes
-          EEPROM.write(CURRENT_OFFSET_addr +1, can_msg.data[1]); //Este byte lleva el signo del offset
-        }
-        #ifdef SERIAL_DEBUG
-        Serial.print("Current Offset:");
-        Serial.print(can_msg.data[1], BIN);
-        Serial.print("  Valor: ");
         Serial.println(can_msg.data[0],BIN);
         #endif
         break;}
@@ -677,16 +622,7 @@ void can_msg_rcv(){
           can_msg.data[6] =   rx_cfg[0][4]; //En bytes 6 y 7 se envian celdas actualmente en balanceo
           can_msg.data[7] =   rx_cfg[0][5] & 0b00001111; //Podria usarse una funcion para obtener config
         }
-        mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN 1 con las configuraciones
-
-        can_msg.can_id = ANSWER_CONFIG_MSG_2_ID;
-        can_msg.can_dlc = 5;
-        can_msg.data[0] =   EEPROM.read(NCELL_PARALLEL_addr);
-        can_msg.data[1] =   EEPROM.read(CURRENT_OFFSET_addr);
-        can_msg.data[2] =   EEPROM.read(CURRENT_OFFSET_addr +1); //El signo del offset está en el siguiente byte
-        can_msg.data[3] =   EEPROM.read(TSLEEP_addr);
-        can_msg.data[4] =   EEPROM.read(BALANCING_TYPE_addr);
-        mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN 2 con las configuraciones
+        mcp2515.sendMessage(&can_msg); //Se envia el mensaje CAN con las configuraciones
         break;}
       case MAX_DIFF_CELL_MSG_ID:{
         if(EEPROM.read(MAX_DIFF_CELL_addr) != can_msg.data[0]){
@@ -703,7 +639,7 @@ void can_msg_rcv(){
     }
   }
   read_eeprom_ltc (TOTAL_IC, tx_cfg); //Se actualiza el array de config del LTC leyendo los parametros de la EEPROM
-  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE, NCELL_PARALLEL, CURRENT_OFFSET, TSLEEP); //Se actualizan los valores de config del ATMega
+  read_eeprom_atmega(UV_THR, OV_THR, N_NTC,TOTAL_CELL,UVBAT_THR, OVBAT_THR, MAX_VCELL_DIFF, BALANCING_TYPE); //Se actualizan los valores de config del ATMega
   LTC6804_initialize();
   LTC6804_wrcfg(TOTAL_IC, tx_cfg); //Se actualiza la configuracion del LTC
   delay(10);

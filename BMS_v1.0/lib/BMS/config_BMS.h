@@ -13,8 +13,6 @@
 #define TSLEEP_addr 7
 #define MAX_DIFF_CELL_addr 8
 #define BALANCING_TYPE_addr 9
-#define NCELL_PARALLEL_addr 10
-#define CURRENT_OFFSET_addr 11 //En la dirección 12 se tiene almacenado el signo del offset
 
 
 #endif
