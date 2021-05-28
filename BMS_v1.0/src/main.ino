@@ -166,6 +166,10 @@ void setup(){
 ***********************************************************************/
 
 void loop() {
+  static unsigned long time_last_msg_bat = 0;
+  static unsigned long time_last_msg_current = 0;
+  static unsigned long time_last_msg_temp = 0;
+  static unsigned long time_last_msg_soc = 0;
   static float T_max = 0.0;
   //Comienza la lectura y conversión de las tensiones leidas por el LTC6804
   read_cell_voltage (TOTAL_IC, TOTAL_CELL, tx_cfg, cell_codes);
@@ -173,21 +177,26 @@ void loop() {
   //Se convierten los valores de la tensión de las celdas a mensaje CAN
   cell_voltage_to_can_msg (cell_codes, TOTAL_IC, TOTAL_CELL, canBatMsg1, canBatMsg2, canBatMsg3);
 
-  //Se envia el valor de las tensiones de celdas por CAN
-  send_can_msg(canBatMsg1);
+  if (millis() > time_last_msg_bat + (TSLEEP * 15)){
+    //Se envia el valor de las tensiones de celdas por CAN
+    send_can_msg(canBatMsg1);
 
-  if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo y tercer mensaje CAN
-    send_can_msg(canBatMsg2);
-  }
-  if(TOTAL_CELL >= 9){
-    send_can_msg (canBatMsg3);
+    if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo y tercer mensaje CAN
+      send_can_msg(canBatMsg2);
+    }
+    if(TOTAL_CELL >= 9){
+      send_can_msg (canBatMsg3);
+    }
+    time_last_msg_bat = millis();
   }
 
   //Se mide la corriente y se envía el valor por CAN
   int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR, CURRENT_OFFSET);
   current_to_can_msg (current, canCurrentMsg);
-  send_can_msg(canCurrentMsg);
-
+  if (millis() > time_last_msg_current + (TSLEEP *15)){
+    send_can_msg(canCurrentMsg);
+    time_last_msg_current = millis();
+  }
 
   //Verificar y activar el balanceo de las celdas necesarias
   if(force_bal_flag == false){ //Si no se ha forzado el balanceo, se comprueba el tipo de balanceo
@@ -238,22 +247,28 @@ void loop() {
   //Se conviertes las temperaturas a mensajes CAN
   temp_to_can_msg(cell_temp, N_NTC, canTempMsg1, canTempMsg2, canTempMsg3, canTempMsg4);
 
+  if (millis() > time_last_msg_temp + (TSLEEP *15)){
   //Se envian las Temperaturas de las celdas por CAN. Cada mensaje tiene 8 temperaturas
-  send_can_msg(canTempMsg1); //Primeras 8 NTC
-  if (N_NTC >8){ //NTC de 9 a 16
-    send_can_msg(canTempMsg2);
-  }
-  if (N_NTC > 16){ //NTC de 17 a 24
-    send_can_msg(canTempMsg3);
-  }
-  if (N_NTC >24){ //NTC de 24 a 32
-    send_can_msg(canTempMsg4);
+    send_can_msg(canTempMsg1); //Primeras 8 NTC
+    if (N_NTC >8){ //NTC de 9 a 16
+      send_can_msg(canTempMsg2);
+    }
+    if (N_NTC > 16){ //NTC de 17 a 24
+      send_can_msg(canTempMsg3);
+    }
+    if (N_NTC >24){ //NTC de 24 a 32
+      send_can_msg(canTempMsg4);
+    }
+    time_last_msg_temp = millis();
   }
 
   //Estimar SOH y SOC y enviarlos por CAN
   float SOC =  calculate_SOC(float(current/NCELL_PARALLEL), float(voltaje_total/TOTAL_CELL), internal_resistor);//Devuelve el SOC en porcentaje 0-100%
   SOC_can_msg(SOC, canSOCMsg);// Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 1000
-  send_can_msg(canSOCMsg);
+  if (millis() > time_last_msg_soc + (TSLEEP *15)){
+    send_can_msg(canSOCMsg);
+    time_last_msg_soc = millis();
+  }
 
   /*for (uint8_t i=0 ; i < TSLEEP; i++){
     LowPower.powerDown(SLEEP_15MS, ADC_OFF, BOD_ON);
