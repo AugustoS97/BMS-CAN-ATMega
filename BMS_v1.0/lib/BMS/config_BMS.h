@@ -14,5 +14,7 @@
 #define MAX_DIFF_CELL_addr 8
 #define BALANCING_TYPE_addr 9
 #define NCELL_PARALLEL_addr 10
+#define CURRENT_OFFSET_addr 11
+#define CURRENT_OFFSET_addr2 12
 
 #endif

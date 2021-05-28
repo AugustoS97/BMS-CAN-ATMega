@@ -27,11 +27,11 @@ void print_rxconfig(uint8_t rx_cfg[][8], const uint8_t TOTAL_IC);
 
 void read_eeprom_ltc (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]);
 
-void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC, uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE, uint8_t &NCELL_PARALLEL);
+void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC, uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE, uint8_t &NCELL_PARALLEL, int16_t &CURRENT_OFFSET);
 
 void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_t tx_cfg[][6], uint16_t cell_codes[][12]);
 
-int32_t get_current (const int samples_number, const float sensibility_current, const uint8_t PIN_CURRENT_SENSOR);
+int32_t get_current (const int samples_number, const float sensibility_current, const uint8_t PIN_CURRENT_SENSOR, const int16_t CURRENT_OFFSET);
 
 void force_balancing (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6], uint8_t cells_to_balance, bool group);
 

@@ -4,14 +4,14 @@
 /***********************************
  * Función para medir la corriente  en mA
  ************************************/
- int32_t get_current (const int samples_number, const float sensibility_current, const uint8_t PIN_CURRENT_SENSOR){
+ int32_t get_current (const int samples_number, const float sensibility_current, const uint8_t PIN_CURRENT_SENSOR, const int16_t CURRENT_OFFSET){
   float current_sum = 0;
   for (int i=0; i<samples_number; i++){
     float voltage = analogRead(PIN_CURRENT_SENSOR) * 5.0 /1023.0;
     current_sum += (voltage -2.5)/sensibility_current; //V = 2.5 + K*I
   }
   int32_t current = round((current_sum/samples_number)*1000);
-  return(current); //Devuelve la corriente medida en mA
+  return(current + CURRENT_OFFSET); //Devuelve la corriente medida en mA aplicandole el offset
 }
 
 
@@ -111,7 +111,7 @@ void read_eeprom_ltc (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]){
   y Umbrales de voltaje de la bateria inferior y superior
 *************************************/
 void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
-    uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE, uint8_t &NCELL_PARALLEL){
+    uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE, uint8_t &NCELL_PARALLEL, int16_t &CURRENT_OFFSET){
   uint8_t value = uint8_t(EEPROM.read(NCELL_addr));
   if( value <= 12){
     TOTAL_CELL = value;
@@ -135,6 +135,7 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
   if (value <= 99){
     NCELL_PARALLEL = value; //Se obtiene el valor de numero de celdas paralelo
   }
+  CURRENT_OFFSET = int16_t((uint16_t(uint8_t(EEPROM.read(CURRENT_OFFSET_addr2)) << 8) | uint16_t(EEPROM.read(CURRENT_OFFSET_addr)))-32767);//Se obtiene el offset de la corriente
 }
 
 
