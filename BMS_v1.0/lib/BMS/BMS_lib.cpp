@@ -111,7 +111,7 @@ void read_eeprom_ltc (const uint8_t TOTAL_IC, uint8_t tx_cfg[][6]){
   y Umbrales de voltaje de la bateria inferior y superior
 *************************************/
 void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
-    uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE){
+    uint8_t &TOTAL_CELL, float &UVBAT_THR, float &OVBAT_THR, float &MAX_VCELL_DIFF, uint8_t &BALANCING_TYPE, uint8_t &NCELL_PARALLEL){
   uint8_t value = uint8_t(EEPROM.read(NCELL_addr));
   if( value <= 12){
     TOTAL_CELL = value;
@@ -131,6 +131,9 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
   value = uint8_t(EEPROM.read(BALANCING_TYPE_addr)); //Se obtiene la configuración del balanceo
   if(value <=3){
     BALANCING_TYPE = value;
+  }
+  if (value <= 99){
+    NCELL_PARALLEL = value; //Se obtiene el valor de numero de celdas paralelo
   }
 }
 
