@@ -57,6 +57,13 @@ A continuación se indican los mensajes CAN que son intercambiados entre el nodo
   - Valor = El byte se convierte a un entero de 8 bits e indica el número de celdas entre 1 y 12.  
   - Se almacena el valor en la dirección de memoria 0x05 de la EEPROM (NCELL_addr)
 
+### Configurar valor N_CELL_PARALLEL. Mensaje CAN
+- Este mensaje configura el número de celdas conectadas en paralelo en el BMS.
+  - El ID en hexadecimal del mensaje CAN es ID=0x0F. (NCELL_PARALLEL_MSG_ID)
+  - DLC = 1 byte
+  - Valor = El byte se convierte a un entero de 8 bits e indica el número de celdas entre 1 y 99.  
+  - Se almacena el valor en la dirección de memoria 0x0A de la EEPROM (NCELL_PARALLEL_addr)
+
 
 ### Configurar valor N_NTC. Mensaje CAN
 - Este mensaje configura el número de sensores de temperatura empleados en el BMS.
@@ -106,6 +113,14 @@ Se envía un mnesaje CAN de 1 byte con los siguientes datos:
   - Valor = data[0] * 1mV
   - Se almacena el valor en la dirección de memoria 0x08 de la EEPROM (MAX_DIFF_CELL_addr)
 
+### Configurar offset del sensor de corriente (en mA). Mensaje CAN
+- Este mensaje CAN configura el offset a aplicar en la medida del sensor de corriente. Permite un offset entre -220 y +220 mA.
+  - El ID en hexadecimal es ID=0x10 (CURRENT_OFFSET_MSG_ID)
+  - DLC = 2 byte
+  - Valor = data[0]
+  - Signo del offset: Si data[1] == 1 -> Signo negativo. Si data[1] == 0 ->Signo positivo
+  - Se almacena el valor en la dirección de memoria 0x0B(11) (el valor) y 0x0C(12) (el signo) de la EEPROM (CURRENT_OFFSET_addr)
+
 ### Pedir las configuraciones de los BMS. Mensaje CAN
 - Este mensaje CAN pide todas las configuraciones almacenadas en la EEPROM del BMS. El ID de este mensaje es ID = 0x0B.
 El BMS responde con un mensaje con ID = 0x0C y 8 bytes con los datos que ha obtenido de las direcciones de la EEPROM 0x00 a 0x07.
@@ -114,7 +129,7 @@ El BMS responde con un mensaje con ID = 0x0C y 8 bytes con los datos que ha obte
   - Valor = 255
 
 ### Enviar todas las configuraciones almacenadas en el BMS. Mensaje CAN
-- Este mensaje CAN devuelve los diferentes parámetros de configuración en 8 bytes. Su ID es ID = 0x0C.
+- Este primer mensaje CAN devuelve los diferentes parámetros de configuración en 8 bytes. Su ID es ID = 0x0C.
   - El ID es ID=0x0C (ANSWER_CONFIG_MSG_ID)
   - DLC = 8 bytes
   - Valores:
@@ -126,6 +141,15 @@ El BMS responde con un mensaje con ID = 0x0C y 8 bytes con los datos que ha obte
     - data[5] = MAX_DIFF_CELL_mV
     - data[6] = CELL_BALANCING_C0_C7
     - data[7] = CELL_BALANCING_C8_C11
+- Este segundo mensaje CAN devuelve los parámetros de configuración restantes en 5 bytes. Su ID es ID = 0x11.
+  - El ID es ID=0x11 (ANSWER_CONFIG_MSG_2_ID)
+  - DLC = 5 bytes
+  - Valores:
+    - data[0] = NCELL_PARALLEL
+    - data[1] = CURRENT_OFFSET
+    - data[2] = CURRENT_OFFSET_SIGN (Signo para saber si el offset es positivo o negativo)
+    - data[3] = T_SLEEP
+    - data[4] = BALANCING_TYPE
 
 ### Enviar los valores en Voltios de las celdas 1 a la 4. Mensaje CAN
 - Este mensaje envía el voltaje de las celdas C1-C4 cada una de ellas como 2 bytes. El valor obtenido debe multiplicarse por 100 uV para tener el Voltaje de la celda.
