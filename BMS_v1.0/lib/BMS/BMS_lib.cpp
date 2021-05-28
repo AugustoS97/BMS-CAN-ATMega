@@ -148,7 +148,7 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
   if (value <= 99){
     NCELL_PARALLEL = value; //Se obtiene el valor de numero de celdas paralelo
   }
-  value = uint8_t(EEPROM.read(CURRENT_OFFSET_addr)); //Se obtiene el offset de la corriente
+  /*value = uint8_t(EEPROM.read(CURRENT_OFFSET_addr)); //Se obtiene el offset de la corriente
   if (EEPROM.read(CURRENT_OFFSET_addr +1) == 0b1){ //Se obtiene el signo del offset de la siguiente dirección de memoria
     CURRENT_OFFSET = (-1) * value;
   }
@@ -161,7 +161,7 @@ void read_eeprom_atmega(float &UV_THR, float &OV_THR, uint8_t &N_NTC,
   }
   else{
     TSLEEP = 0;
-  }
+  }*/
 
 }
 
@@ -201,9 +201,9 @@ void read_cell_voltage (const uint8_t TOTAL_IC, const uint8_t TOTAL_CELL, uint8_
     }
   }
   else { //Si no hay error con el CRC se procede a mostrar los valores medidos
-  //#ifdef SERIAL_DEBUG
+  #ifdef SERIAL_DEBUG
     print_cells(TOTAL_IC, cell_codes); //Se muestran los valores de tensión medidos
-  //#endif
+  #endif
   }
 }
 

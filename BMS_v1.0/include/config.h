@@ -38,6 +38,7 @@
 #define SENSIBILITY_CURRENT 0.066 //Sensibilidad del sensor de corriente ACS712 30A
 #define SAMPLESNUMBER 100 //Numero de muestras tomadas para hacer la media de la corriente
 
+#define TIME_BWN_MSG 500 //Time in ms between mensajes
 //#define SERIAL_DEBUG
 
 #endif

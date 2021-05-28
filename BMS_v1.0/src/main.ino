@@ -166,30 +166,46 @@ void setup(){
 ***********************************************************************/
 
 void loop() {
+  static unsigned long last_time_bat_msg = 0;
+  static unsigned long last_time_current = 0;
+  static unsigned long last_time_temp = 0;
+  static unsigned long last_time_soc = 0;
   static float T_max = 0.0;
   //Comienza la lectura y conversión de las tensiones leidas por el LTC6804
+  Serial.println("1");
   read_cell_voltage (TOTAL_IC, TOTAL_CELL, tx_cfg, cell_codes);
-
+  Serial.println("2");
   //Se convierten los valores de la tensión de las celdas a mensaje CAN
   cell_voltage_to_can_msg (cell_codes, TOTAL_IC, TOTAL_CELL, canBatMsg1, canBatMsg2, canBatMsg3);
 
-  //Se envia el valor de las tensiones de celdas por CAN
-  send_can_msg(canBatMsg1);
+  Serial.println("3");
+  if(millis() > last_time_bat_msg + TIME_BWN_MSG){ //Si ha pasado 1 segundo desde el ultimo mensaje CAN
+    //Se envia el valor de las tensiones de celdas por CAN
+    send_can_msg(canBatMsg1);
 
-  if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo mensaje CAN
-    send_can_msg(canBatMsg2);
-  }
-  if(TOTAL_CELL > 8){ // Si hay más de 8 celdas se envia tercer mensaje CAN
-    send_can_msg (canBatMsg3);
+    if(TOTAL_CELL > 4){ //Si hay mas de 4 celdas se envia segundo mensaje CAN
+      send_can_msg(canBatMsg2);
+    }
+    if(TOTAL_CELL > 8){ // Si hay más de 8 celdas se envia tercer mensaje CAN
+      send_can_msg (canBatMsg3);
+    }
+    last_time_bat_msg = millis();
   }
 
+  Serial.println("4");
   //Se mide la corriente (en mA) y se envía el valor por CAN
   int32_t current = get_current (SAMPLESNUMBER, SENSIBILITY_CURRENT, PIN_CURRENT_SENSOR, CURRENT_OFFSET);
+  Serial.println("5");
   current_to_can_msg (current, canCurrentMsg);
-  send_can_msg(canCurrentMsg);
+  if(millis() > last_time_current + TIME_BWN_MSG){ //Si ha pasado 1 segundo desde ultimo mensaje
+    send_can_msg(canCurrentMsg);
+    last_time_current = millis();
+  }
+
 
 
   //Verificar y activar el balanceo de las celdas necesarias
+  Serial.println("6");
   if(force_bal_flag == false){ //Si no se ha forzado el balanceo, se comprueba el tipo de balanceo
     switch(BALANCING_TYPE){
       case 0:{ //Caso de balanceo desactivado
@@ -223,38 +239,48 @@ void loop() {
     }
   }
 
+  Serial.println("7");
   //Calcular tensión total y generar aviso de tension o Temperatura
   float voltaje_total = calc_volt_total(cell_codes, TOTAL_IC, TOTAL_CELL);
-
+  Serial.println("8");
   bool genera_warning = warning_msg(voltaje_total, UVBAT_THR, OVBAT_THR, T_max, warning);
   if (genera_warning) {
     //Se envia el aviso
     send_can_msg(warning);
   }
-
+  Serial.println("9");
   //Se miden todas las temperaturas de las celdas y se guardan en cell_temp. Además se obtiene la T_max
   T_max = measure_all_temp(cell_temp, N_NTC, BETTA, To, Ro, Raux, Vcc, PIN_ANALOG_NTC, PIN_SYNC_MUX);
-
+  Serial.println("10");
   //Se conviertes las temperaturas a mensajes CAN
   temp_to_can_msg(cell_temp, N_NTC, canTempMsg1, canTempMsg2, canTempMsg3, canTempMsg4);
+  Serial.println("11");
+  if (millis() > last_time_temp + TIME_BWN_MSG){ // Si ha pasaod 1 segundo desde el ultimo mensaje
+    //Se envian las Temperaturas de las celdas por CAN. Cada mensaje tiene 8 temperaturas
+    send_can_msg(canTempMsg1); //Primeras 8 NTC
+    if (N_NTC >8){ //NTC de 9 a 16
+      send_can_msg(canTempMsg2);
+    }
+    if (N_NTC > 16){ //NTC de 17 a 24
+      send_can_msg(canTempMsg3);
+    }
+    if (N_NTC >24){ //NTC de 24 a 32
+      send_can_msg(canTempMsg4);
+    }
+    last_time_temp = millis();
+  }
 
-  //Se envian las Temperaturas de las celdas por CAN. Cada mensaje tiene 8 temperaturas
-  send_can_msg(canTempMsg1); //Primeras 8 NTC
-  if (N_NTC >8){ //NTC de 9 a 16
-    send_can_msg(canTempMsg2);
-  }
-  if (N_NTC > 16){ //NTC de 17 a 24
-    send_can_msg(canTempMsg3);
-  }
-  if (N_NTC >24){ //NTC de 24 a 32
-    send_can_msg(canTempMsg4);
-  }
-
+  Serial.println("12");
   //Estimar SOH y SOC y enviarlos por CAN. Se estima el SOC de un celda promedio. Es decir con la V promedio de las Celdas
   // y asumiendo que cada celda proporciona la misma corriente en cada instante
   float SOC =  calculate_SOC(float(current/NCELL_PARALLEL), float(voltaje_total/TOTAL_CELL), internal_resistor);//Devuelve el SOC en porcentaje 0-100%
   SOC_can_msg(SOC, canSOCMsg);// Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 1000
-  send_can_msg(canSOCMsg);
+    Serial.println("12");
+  if (millis() > last_time_soc + TIME_BWN_MSG){// Si ha pasado 1 segundo desde el ultimo mensaje
+    send_can_msg(canSOCMsg);
+    last_time_soc = millis(); //Se actualiza el tiempo en el último mensaje
+  }
+
 
   //Se duerme el tiempo indicado
   /*for (uint8_t i=0 ; i < TSLEEP; i++){
@@ -465,7 +491,6 @@ void temp_to_can_msg(float array_temp[], const uint8_t N_NTC, struct can_frame &
  **************************************/
 void SOC_can_msg(float SOC, struct can_frame &SOC_msg) { // Se codifica el SOC en un mensaje CAN de 2 bytes. Se envia el porcentaje multiplicado por 100
   uint16_t _SOC = round(SOC * 100);
-  Serial.println(_SOC);
   SOC_msg.data[1] = uint8_t(_SOC >> 8);
   SOC_msg.data[0] = uint8_t(_SOC & 0b0000000011111111);
 }
@@ -517,6 +542,7 @@ void init_mcp2515(const CAN_SPEED canSpeed, CAN_CLOCK canClock, int mode) {
 
 
 void can_msg_rcv(){
+  Serial.println("Entrando en una interrupcion");
   noInterrupts();
   if(mcp2515.readMessage(&can_msg) == MCP2515::ERROR_OK){
     uint8_t can_id = can_msg.can_id;
@@ -573,10 +599,6 @@ void can_msg_rcv(){
         if(EEPROM.read(CURRENT_OFFSET_addr) != can_msg.data[0]){
           EEPROM.write(CURRENT_OFFSET_addr, can_msg.data[0]); //Este mensaje CAN de configuración es de 2 bytes
           EEPROM.write(CURRENT_OFFSET_addr +1, can_msg.data[1]); //Este byte lleva el signo del offset
-          Serial.print("Offset de corriente: ");
-          Serial.println(can_msg.data[0]);
-          Serial.print("Signo del offset: ");
-          Serial.println(can_msg.data[1]);
         }
         #ifdef SERIAL_DEBUG
         Serial.print("Current Offset:");
