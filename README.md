@@ -114,12 +114,11 @@ Se envía un mnesaje CAN de 1 byte con los siguientes datos:
   - Se almacena el valor en la dirección de memoria 0x08 de la EEPROM (MAX_DIFF_CELL_addr)
 
 ### Configurar offset del sensor de corriente (en mA). Mensaje CAN
-- Este mensaje CAN configura el offset a aplicar en la medida del sensor de corriente. Permite un offset entre -220 y +220 mA.
+- Este mensaje CAN configura el offset a aplicar en la medida del sensor de corriente. Permite un offset entre -32767 y +32767 mA.
   - El ID en hexadecimal es ID=0x10 (CURRENT_OFFSET_MSG_ID)
   - DLC = 2 byte
-  - Valor = data[0]
-  - Signo del offset: Si data[1] == 1 -> Signo negativo. Si data[1] == 0 ->Signo positivo
-  - Se almacena el valor en la dirección de memoria 0x0B(11) (el valor) y 0x0C(12) (el signo) de la EEPROM (CURRENT_OFFSET_addr)
+  - Valor = ((data[0] << 8) | data[1]) - 32767
+  - Se almacena el valor en las direcciones de memoria 0x0B y 0x0C de la EEPROM (CURRENT_OFFSET_addr y CURRENT_OFFSET_addr2)
 
 ### Pedir las configuraciones de los BMS. Mensaje CAN
 - Este mensaje CAN pide todas las configuraciones almacenadas en la EEPROM del BMS. El ID de este mensaje es ID = 0x0B.
@@ -146,8 +145,8 @@ El BMS responde con un mensaje con ID = 0x0C y 8 bytes con los datos que ha obte
   - DLC = 5 bytes
   - Valores:
     - data[0] = NCELL_PARALLEL
-    - data[1] = CURRENT_OFFSET
-    - data[2] = CURRENT_OFFSET_SIGN (Signo para saber si el offset es positivo o negativo)
+    - data[1] = CURRENT_OFFSET (MS Byte)
+    - data[2] = CURRENT_OFFSET (LS Byte). En su reconstrucción hay que restarle 32767 a la palabra
     - data[3] = T_SLEEP
     - data[4] = BALANCING_TYPE
 
