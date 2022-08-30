@@ -3,6 +3,8 @@ Firmware del nodo BMS que monitoriza la tensión, la temperatura de las celdas, 
 y realiza el balanceo de las celdas, cuando la diferencia entre celdas supera un valor establecido.
 Transmite los parámetros medidos por CANBUS y puede ser configurado mediante CANBUS.
 
+Requiere las herramientas desarrolladas en el proyecto CAN-Programmer-ATMega para ser configurado por serial: https://github.com/AugustoS97/BMS-CAN-Programmer-ATMega
+
 # Mensajes CAN
 A continuación se indican los mensajes CAN que son intercambiados entre el nodo BMS y el resto de nodos.
 
